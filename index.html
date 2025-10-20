@@ -2,25 +2,41 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>Perpendicular & Parallel — Draw-Through-C</title>
   <style>
     :root{ --ink:#0f172a; --grid:#e2e8f0; --grid-bold:#cbd5e1; --accent:#6366f1; }
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Inter,Arial;background:#fbfaff;color:var(--ink)}
+    html,body{height:100%}
+    body{
+      margin:0;font-family:system-ui,Segoe UI,Roboto,Inter,Arial;background:#fbfaff;color:var(--ink);
+      overscroll-behavior:contain; -webkit-text-size-adjust:100%;
+    }
     header{padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:linear-gradient(180deg,#eef2ff,transparent)}
-    h1{font-size:20px;margin:0;font-weight:800}
+    h1{font-size:18px;margin:0;font-weight:800}
+    @media (min-width:640px){ h1{font-size:20px} }
     select,button{padding:10px 12px;border:1px solid #d1d5db;border-radius:12px;background:#fff}
     button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
     .badge{padding:6px 10px;border-radius:999px;border:1px solid #d1d5db;background:#fff}
     .wrap{max-width:1100px;margin:0 auto;padding:16px}
-    .prompt{margin:8px 0 14px;padding:14px 16px;border-radius:12px;border:2px solid #facc15;background:#fff7d6;color:#1f2937;font-size:22px;font-weight:800}
+    .prompt{margin:8px 0 14px;padding:14px 16px;border-radius:12px;border:2px solid #facc15;background:#fff7d6;color:#1f2937;font-size:18px;font-weight:800}
+    @media (min-width:640px){ .prompt{font-size:22px} }
     .prompt.good{border-color:#22c55e;background:#dcfce7;color:#065f46}
     .prompt.bad{border-color:#ef4444;background:#fee2e2;color:#7f1d1d}
     .board{position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px}
-    canvas{width:100%;height:auto;display:block;border-radius:12px;background:#ffffff}
-    .legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:18px;margin-top:12px;font-weight:600}
-    .status{margin-left:auto;font-weight:800;font-size:20px}
+    .canvas-wrap{position:relative;width:100%}
+    canvas{
+      width:100%;
+      height:auto;
+      display:block;
+      border-radius:12px;
+      background:#ffffff;
+      touch-action:none;
+      -webkit-user-select:none; user-select:none;
+      -webkit-touch-callout:none;
+    }
+    .legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:16px;margin-top:12px;font-weight:600}
+    .status{margin-left:auto;font-weight:800;font-size:18px}
     .err{display:none;margin:8px 0;padding:10px 12px;border-radius:10px;border:2px solid #ef4444;background:#fee2e2;color:#7f1d1d;font-weight:800}
     .credit{max-width:1100px;margin:16px auto 24px;text-align:center;color:#6b7280;font-weight:600}
   </style>
@@ -34,7 +50,6 @@
         <option value="perpC">Perpendicular to AB (must pass through C)</option>
       </select>
     </label>
-    <!-- Removed Prev button -->
     <button id="action" class="primary" disabled>Check</button>
     <button id="clear">Clear Line</button>
     <span class="badge" id="qlabel">Q 1 / 10</span>
@@ -45,7 +60,9 @@
     <div id="err" class="err"></div>
     <div id="prompt" class="prompt">Loading…</div>
     <div class="board">
-      <canvas id="grid" width="1000" height="560"></canvas>
+      <div class="canvas-wrap">
+        <canvas id="grid" width="1000" height="560"></canvas>
+      </div>
       <div class="legend">
         <span style="width:18px;height:3px;background:#64748b"></span> Given line AB
         <span style="width:18px;height:3px;background:#0ea5e9"></span> Your line
@@ -58,7 +75,7 @@
 
 <script>
 window.addEventListener('error',(e)=>{ const box=document.getElementById('err'); box.style.display='block'; box.textContent='Error: '+(e?.error?.message||e.message); });
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', init, {once:true});
 
 function init(){
   // Elements
@@ -72,14 +89,40 @@ function init(){
   const promptEl=document.getElementById('prompt');
   const statusEl=document.getElementById('status');
 
-  // Grid constants
+  // Grid constants (logical grid)
   const COLS=18, ROWS=10, MARGIN=30;
-  let W=canvas.width, H=canvas.height, cellS, marginX, marginY;
-  layout();
+  let W=canvas.width, H=canvas.height; // logical
+  let cellS, marginX, marginY;
 
-  function layout(){ const availW=W-2*MARGIN, availH=H-2*MARGIN; cellS=Math.min(availW/COLS, availH/ROWS); marginX=(W-COLS*cellS)/2; marginY=(H-ROWS*cellS)/2; }
+  // HiDPI / responsive sizing
+  function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    const ratio = Math.max(1, Math.min(3, Math.round((window.devicePixelRatio||1))));
+    canvas.width  = Math.max(600, Math.round(rect.width  * ratio));
+    canvas.height = Math.round(canvas.width * (560/1000)); // preserve aspect
+    W = canvas.width; H = canvas.height;
+    ctx.setTransform(1,0,0,1,0,0);
+    layout();
+    // IMPORTANT: don't paint here before A/B/C exist
+    if (A && B && C) paint();
+  }
+
+  // Recompute cell & margins based on current canvas size
+  function layout(){
+    const availW=W-2*MARGIN, availH=H-2*MARGIN;
+    cellS=Math.min(availW/COLS, availH/ROWS);
+    marginX=(W-COLS*cellS)/2;
+    marginY=(H-ROWS*cellS)/2;
+  }
+
+  // Coordinate helpers
   function toCanvas(p){ return {x: marginX + p.x*cellS, y: marginY + p.y*cellS}; }
-  function toGrid(px,py){ return {x: clamp(Math.round((px-marginX)/cellS),0,COLS), y: clamp(Math.round((py-marginY)/cellS),0,ROWS)} }
+  function toGrid(px,py){
+    return {
+      x: clamp(Math.round((px-marginX)/cellS),0,COLS),
+      y: clamp(Math.round((py-marginY)/cellS),0,ROWS)
+    }
+  }
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
   // Session (10 Q: 5 parallel + 5 perpendicular)
@@ -120,25 +163,25 @@ function init(){
     ctx.clearRect(0,0,W,H);
     ctx.lineWidth=1; ctx.strokeStyle=getCSS('--grid');
     ctx.beginPath();
-    for(let i=0;i<=COLS;i++){ const x=marginX+i*cellS; ctx.moveTo(x,marginY); ctx.lineTo(x,marginY+ROWS*cellS);}
-    for(let j=0;j<=ROWS;j++){ const y=marginY+j*cellS; ctx.moveTo(marginX,y); ctx.lineTo(marginX+COLS*cellS,y);}
+    for(let i=0;i<=COLS;i++){ const x=marginX+i*cellS; ctx.moveTo(x,marginY); ctx.lineTo(x,marginY+ROWS*cellS); }
+    for(let j=0;j<=ROWS;j++){ const y=marginY+j*cellS; ctx.moveTo(marginX,y); ctx.lineTo(marginX+COLS*cellS,y); }
     ctx.stroke();
     ctx.lineWidth=1.2; ctx.strokeStyle=getCSS('--grid-bold');
     ctx.beginPath();
-    for(let i=0;i<=COLS;i+=3){ const x=marginX+i*cellS; ctx.moveTo(x,marginY); ctx.lineTo(x,marginY+ROWS*cellS);}
-    for(let j=0;j<=ROWS;j+=3){ const y=marginY+j*cellS; ctx.moveTo(marginX,y); ctx.lineTo(marginX+COLS*cellS,y);}
+    for(let i=0;i<=COLS;i+=3){ const x=marginX+i*cellS; ctx.moveTo(x,marginY); ctx.lineTo(x,marginY+ROWS*cellS); }
+    for(let j=0;j<=ROWS;j+=3){ const y=marginY+j*cellS; ctx.moveTo(marginX,y); ctx.lineTo(marginX+COLS*cellS,y); }
     ctx.stroke();
     ctx.lineWidth=2; ctx.strokeStyle='#e5e7eb'; ctx.strokeRect(marginX,marginY,COLS*cellS,ROWS*cellS);
   }
   function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v)||'#e5e7eb'; }
-  function drawPoint(P,label){ const p=toCanvas(P); ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); ctx.font='16px Arial'; ctx.textAlign='center'; ctx.textBaseline='bottom'; const dx=(label==='A'||label==='B')?14:0; ctx.fillText(label,p.x+dx,p.y-8);}    
-  function drawAB(){ ctx.lineWidth=3; ctx.strokeStyle='#64748b'; const a=toCanvas(A), b=toCanvas(B); ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); drawPoint(A,'A'); drawPoint(B,'B'); drawPoint(C,'C'); }
+  function drawPoint(P,label){ const p=toCanvas(P); ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(p.x,p.y,Math.max(3,cellS*0.05),0,Math.PI*2); ctx.fill(); ctx.font=Math.max(12,Math.floor(cellS*0.22))+'px Arial'; ctx.textAlign='center'; ctx.textBaseline='bottom'; const dx=(label==='A'||label==='B')?Math.max(10,cellS*0.15):0; ctx.fillText(label,p.x+dx,p.y-8);}    
+  function drawAB(){ ctx.lineWidth=Math.max(2,cellS*0.06); ctx.strokeStyle='#64748b'; const a=toCanvas(A), b=toCanvas(B); ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); drawPoint(A,'A'); drawPoint(B,'B'); drawPoint(C,'C'); }
   function drawRightAngle(P){ const a=toCanvas(A), b=toCanvas(B); const ux=b.x-a.x, uy=b.y-a.y; const len=Math.hypot(ux,uy)||1; const U={x:ux/len,y:uy/len}; let V={x:-U.y,y:U.x}; const s=Math.max(6,cellS*0.25); const p0={x:P.x,y:P.y}; const p1={x:P.x+U.x*s,y:P.y+U.y*s}; const p2={x:p1.x+V.x*s,y:p1.y+V.y*s}; const p3={x:P.x+V.x*s,y:P.y+V.y*s}; ctx.save(); ctx.fillStyle='#111827'; ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.lineTo(p3.x,p3.y); ctx.closePath(); ctx.fill(); ctx.restore(); }
   function drawUser(){ 
-    if(dragging && tempPoint && previewEnd){ ctx.save(); ctx.lineWidth=4; ctx.setLineDash([10,8]); ctx.strokeStyle='#0ea5e9'; const p1=toCanvas(tempPoint), p2=toCanvas(previewEnd); ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); ctx.restore(); }
-    if(userLine){ ctx.lineWidth=4; ctx.strokeStyle='#0ea5e9'; const p1=toCanvas(userLine.p1), p2=toCanvas(userLine.p2); ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); }
+    if(dragging && tempPoint && previewEnd){ ctx.save(); ctx.lineWidth=Math.max(3,cellS*0.08); ctx.setLineDash([Math.max(8,cellS*0.25), Math.max(6,cellS*0.2)]); ctx.strokeStyle='#0ea5e9'; const p1=toCanvas(tempPoint), p2=toCanvas(previewEnd); ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); ctx.restore(); }
+    if(userLine){ ctx.lineWidth=Math.max(4,cellS*0.1); ctx.strokeStyle='#0ea5e9'; const p1=toCanvas(userLine.p1), p2=toCanvas(userLine.p2); ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); }
     const cross=dragging?previewEnd:hoverPoint; 
-    if(cross){ const p=toCanvas(cross); ctx.save(); ctx.strokeStyle='#ef4444'; ctx.lineWidth=2; const L=Math.max(12,cellS*0.35); ctx.beginPath(); ctx.moveTo(p.x-L,p.y); ctx.lineTo(p.x+L,p.y); ctx.moveTo(p.x,p.y-L); ctx.lineTo(p.x,p.y+L); ctx.stroke(); ctx.beginPath(); ctx.fillStyle='#ef4444'; ctx.arc(p.x,p.y,2.5,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(cross){ const p=toCanvas(cross); ctx.save(); ctx.strokeStyle='#ef4444'; ctx.lineWidth=Math.max(2,cellS*0.05); const L=Math.max(12,cellS*0.35); ctx.beginPath(); ctx.moveTo(p.x-L,p.y); ctx.lineTo(p.x+L,p.y); ctx.moveTo(p.x,p.y-L); ctx.lineTo(p.x,p.y+L); ctx.stroke(); ctx.beginPath(); ctx.fillStyle='#ef4444'; ctx.arc(p.x,p.y,Math.max(2.5,cellS*0.04),0,Math.PI*2); ctx.fill(); ctx.restore(); }
     if(rightAngleAt){ drawRightAngle(rightAngleAt); }
   }
   function paint(){ drawGrid(); drawAB(); drawUser(); }
@@ -178,7 +221,7 @@ function init(){
     qlabel.textContent=`Q ${qIndex+1} / ${TOTAL}`;
     scoreEl.textContent=`Score: ${marks.reduce((a,b)=>a+b,0)} / ${TOTAL}`;
     modeSel.value=order[qIndex];
-    const txt=(modeSel.value==='paraC')? 'Q: Draw a line PARALLEL to AB that passes through C. Click-hold–drag–release. Use the red cross as a guide to start or end your line.' : 'Q: Draw a line PERPENDICULAR to AB that passes through C and meets AB. Click-hold–drag–release. Use the red cross as a guide to start or end your line.';
+    const txt=(modeSel.value==='paraC')? 'Q: Draw a line PARALLEL to AB that passes through C. Tap–drag–lift.' : 'Q: Draw a line PERPENDICULAR to AB that passes through C and meets AB. Tap–drag–lift.';
     promptEl.className='prompt'; promptEl.textContent=txt; statusEl.textContent=txt;
     btnAction.textContent='Check'; btnAction.dataset.mode='check'; btnAction.disabled=!userLine;
     checked=false;
@@ -238,22 +281,47 @@ function init(){
     paint();
   }
 
-  // Events — lock interactions once solved so Next remains available
-  canvas.addEventListener('mousedown', e=>{
-    if(checked && btnAction.dataset.mode==='next') return; // locked after correct
-    const p=toGrid(e.offsetX,e.offsetY);
+  // ------- Pointer utilities (mouse + touch unified) -------
+  function getCanvasXY(evt){
+    let clientX, clientY;
+    if (evt.touches && evt.touches.length){
+      clientX = evt.touches[0].clientX;
+      clientY = evt.touches[0].clientY;
+    } else if (evt.changedTouches && evt.changedTouches.length){
+      clientX = evt.changedTouches[0].clientX;
+      clientY = evt.changedTouches[0].clientY;
+    } else {
+      clientX = evt.clientX; clientY = evt.clientY;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top)  * scaleY;
+    return {x,y};
+  }
+
+  function startDraw(evt){
+    if(checked && btnAction.dataset.mode==='next') return;
+    evt.preventDefault();
+    const {x,y}=getCanvasXY(evt);
+    const p=toGrid(x,y);
     tempPoint=p; dragging=true; previewEnd=p; hoverPoint=null; userLine=null;
     btnAction.disabled=true; paint();
-  });
-  canvas.addEventListener('mousemove', e=>{
+  }
+  function moveDraw(evt){
     if(checked && btnAction.dataset.mode==='next') return;
-    const p=toGrid(e.offsetX,e.offsetY);
+    evt.preventDefault();
+    const {x,y}=getCanvasXY(evt);
+    const p=toGrid(x,y);
     if(dragging){ previewEnd=p; } else { hoverPoint=p; }
     paint();
-  });
-  canvas.addEventListener('mouseup', e=>{
+  }
+  function endDraw(evt){
     if(checked && btnAction.dataset.mode==='next') return;
-    const p=toGrid(e.offsetX,e.offsetY);
+    evt.preventDefault();
+    const {x,y}=getCanvasXY(evt);
+    const p=toGrid(x,y);
     if(dragging && tempPoint){
       if(p.x!==tempPoint.x || p.y!==tempPoint.y){
         userLine={p1:tempPoint,p2:p};
@@ -261,13 +329,23 @@ function init(){
       }
     }
     dragging=false; previewEnd=null; paint();
-  });
-  canvas.addEventListener('mouseleave', ()=>{
-    if(checked && btnAction.dataset.mode==='next') return;
-    if(dragging){ dragging=false; previewEnd=null; paint(); }
-  });
+  }
+
+  // Mouse events
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', moveDraw);
+  canvas.addEventListener('mouseup',   endDraw);
+  canvas.addEventListener('mouseleave', (e)=>{ if(checked && btnAction.dataset.mode==='next') return; if(dragging){ dragging=false; previewEnd=null; paint(); } });
+
+  // Touch events
+  canvas.addEventListener('touchstart', startDraw, {passive:false});
+  canvas.addEventListener('touchmove',  moveDraw,  {passive:false});
+  canvas.addEventListener('touchend',   endDraw,   {passive:false});
+  canvas.addEventListener('touchcancel',(e)=>{ if(checked && btnAction.dataset.mode==='next') return; e.preventDefault(); dragging=false; previewEnd=null; paint(); }, {passive:false});
+
+  // Controls
   btnClear.addEventListener('click', ()=>{
-    if(checked && btnAction.dataset.mode==='next') return; // ignore clear after correct
+    if(checked && btnAction.dataset.mode==='next') return;
     userLine=null; tempPoint=null; previewEnd=null; dragging=false; btnAction.disabled=true; rightAngleAt=null; paint();
   });
 
@@ -280,8 +358,19 @@ function init(){
     }
   });
 
-  // Start
+  // Handle resize / orientation
+  window.addEventListener('resize', debounce(resizeCanvas, 100));
+  if (window.visualViewport){
+    window.visualViewport.addEventListener('resize', debounce(resizeCanvas, 100));
+  }
+
+  // Start (resize first, then load; paint happens in loadQuestion)
+  resizeCanvas();
   loadQuestion();
+
+  // Utils
+  function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v)||'#e5e7eb'; }
+  function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a),ms); }; }
 }
 </script>
 </body>
