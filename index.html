@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Perpendicular & Parallel — Draw-Through-C</title>
+  <style>
+    :root{ --ink:#0f172a; --grid:#e2e8f0; --grid-bold:#cbd5e1; --accent:#6366f1; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Inter,Arial;background:#fbfaff;color:var(--ink)}
+    header{padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:linear-gradient(180deg,#eef2ff,transparent)}
+    h1{font-size:20px;margin:0;font-weight:800}
+    select,button{padding:10px 12px;border:1px solid #d1d5db;border-radius:12px;background:#fff}
+    button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .badge{padding:6px 10px;border-radius:999px;border:1px solid #d1d5db;background:#fff}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .prompt{margin:8px 0 14px;padding:14px 16px;border-radius:12px;border:2px solid #facc15;background:#fff7d6;color:#1f2937;font-size:22px;font-weight:800}
+    .prompt.good{border-color:#22c55e;background:#dcfce7;color:#065f46}
+    .prompt.bad{border-color:#ef4444;background:#fee2e2;color:#7f1d1d}
+    .board{position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px}
+    canvas{width:100%;height:auto;display:block;border-radius:12px;background:#ffffff}
+    .legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:18px;margin-top:12px;font-weight:600}
+    .status{margin-left:auto;font-weight:800;font-size:20px}
+    .err{display:none;margin:8px 0;padding:10px 12px;border-radius:10px;border:2px solid #ef4444;background:#fee2e2;color:#7f1d1d;font-weight:800}
+    .credit{max-width:1100px;margin:16px auto 24px;text-align:center;color:#6b7280;font-weight:600}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Perpendicular & Parallel — Draw-Through-C</h1>
+    <label>Mode
+      <select id="mode" disabled>
+        <option value="paraC">Parallel to AB (must pass through C)</option>
+        <option value="perpC">Perpendicular to AB (must pass through C)</option>
+      </select>
+    </label>
+    <!-- Removed Prev button -->
+    <button id="action" class="primary" disabled>Check</button>
+    <button id="clear">Clear Line</button>
+    <span class="badge" id="qlabel">Q 1 / 10</span>
+    <span class="badge" id="score">Score: 0 / 10</span>
+  </header>
+
+  <div class="wrap">
+    <div id="err" class="err"></div>
+    <div id="prompt" class="prompt">Loading…</div>
+    <div class="board">
+      <canvas id="grid" width="1000" height="560"></canvas>
+      <div class="legend">
+        <span style="width:18px;height:3px;background:#64748b"></span> Given line AB
+        <span style="width:18px;height:3px;background:#0ea5e9"></span> Your line
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+  </div>
+
+  <footer class="credit">© 2025 Lim Kim Sze</footer>
+
+<script>
+window.addEventListener('error',(e)=>{ const box=document.getElementById('err'); box.style.display='block'; box.textContent='Error: '+(e?.error?.message||e.message); });
+document.addEventListener('DOMContentLoaded', init);
+
+function init(){
+  // Elements
+  const canvas=document.getElementById('grid');
+  const ctx=canvas.getContext('2d');
+  const modeSel=document.getElementById('mode');
+  const btnAction=document.getElementById('action'); // Check -> Next
+  const btnClear=document.getElementById('clear');
+  const qlabel=document.getElementById('qlabel');
+  const scoreEl=document.getElementById('score');
+  const promptEl=document.getElementById('prompt');
+  const statusEl=document.getElementById('status');
+
+  // Grid constants
+  const COLS=18, ROWS=10, MARGIN=30;
+  let W=canvas.width, H=canvas.height, cellS, marginX, marginY;
+  layout();
+
+  function layout(){ const availW=W-2*MARGIN, availH=H-2*MARGIN; cellS=Math.min(availW/COLS, availH/ROWS); marginX=(W-COLS*cellS)/2; marginY=(H-ROWS*cellS)/2; }
+  function toCanvas(p){ return {x: marginX + p.x*cellS, y: marginY + p.y*cellS}; }
+  function toGrid(px,py){ return {x: clamp(Math.round((px-marginX)/cellS),0,COLS), y: clamp(Math.round((py-marginY)/cellS),0,ROWS)} }
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+
+  // Session (10 Q: 5 parallel + 5 perpendicular)
+  const TOTAL=10; const MODES=[...Array(5).fill('paraC'), ...Array(5).fill('perpC')];
+  let order=shuffle([...MODES]);
+  let boards=new Array(TOTAL).fill(null);
+  let marks=new Array(TOTAL).fill(0);
+  let qIndex=0;
+  let checked=false;
+
+  // State
+  let A,B,C; 
+  let userLine=null; 
+  let dragging=false, tempPoint=null, previewEnd=null, hoverPoint=null; 
+  let rightAngleAt=null;
+
+  // Helpers
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]} return a; }
+  function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+  function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ const t=a%b; a=b; b=t; } return a||1; }
+  function stepBases(A,B){ const dx=B.x-A.x, dy=B.y-A.y; const g=gcd(dx,dy); return { para:{x:dx/g,y:dy/g}, perp:{x:-dy/g,y:dx/g} } }
+  function segInterInf(L1,L2){
+    const x1=L1.p1.x,y1=L1.p1.y,x2=L1.p2.x,y2=L1.p2.y;
+    const x3=L2.p1.x,y3=L2.p1.y,x4=L2.p2.x,y4=L2.p2.y;
+    const den=(x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);
+    if(den===0) return null;
+    const px=((x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4))/den;
+    const py=((x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4))/den;
+    return {x:px,y:py};
+  }
+  function onSegGrid(P,S1,S2){
+    return P.x>=Math.min(S1.x,S2.x) && P.x<=Math.max(S1.x,S2.x)
+        && P.y>=Math.min(S1.y,S2.y) && P.y<=Math.max(S1.y,S2.y);
+  }
+
+  // Draw
+  function drawGrid(){ 
+    ctx.clearRect(0,0,W,H);
+    ctx.lineWidth=1; ctx.strokeStyle=getCSS('--grid');
+    ctx.beginPath();
+    for(let i=0;i<=COLS;i++){ const x=marginX+i*cellS; ctx.moveTo(x,marginY); ctx.lineTo(x,marginY+ROWS*cellS);}
+    for(let j=0;j<=ROWS;j++){ const y=marginY+j*cellS; ctx.moveTo(marginX,y); ctx.lineTo(marginX+COLS*cellS,y);}
+    ctx.stroke();
+    ctx.lineWidth=1.2; ctx.strokeStyle=getCSS('--grid-bold');
+    ctx.beginPath();
+    for(let i=0;i<=COLS;i+=3){ const x=marginX+i*cellS; ctx.moveTo(x,marginY); ctx.lineTo(x,marginY+ROWS*cellS);}
+    for(let j=0;j<=ROWS;j+=3){ const y=marginY+j*cellS; ctx.moveTo(marginX,y); ctx.lineTo(marginX+COLS*cellS,y);}
+    ctx.stroke();
+    ctx.lineWidth=2; ctx.strokeStyle='#e5e7eb'; ctx.strokeRect(marginX,marginY,COLS*cellS,ROWS*cellS);
+  }
+  function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v)||'#e5e7eb'; }
+  function drawPoint(P,label){ const p=toCanvas(P); ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); ctx.font='16px Arial'; ctx.textAlign='center'; ctx.textBaseline='bottom'; const dx=(label==='A'||label==='B')?14:0; ctx.fillText(label,p.x+dx,p.y-8);}    
+  function drawAB(){ ctx.lineWidth=3; ctx.strokeStyle='#64748b'; const a=toCanvas(A), b=toCanvas(B); ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); drawPoint(A,'A'); drawPoint(B,'B'); drawPoint(C,'C'); }
+  function drawRightAngle(P){ const a=toCanvas(A), b=toCanvas(B); const ux=b.x-a.x, uy=b.y-a.y; const len=Math.hypot(ux,uy)||1; const U={x:ux/len,y:uy/len}; let V={x:-U.y,y:U.x}; const s=Math.max(6,cellS*0.25); const p0={x:P.x,y:P.y}; const p1={x:P.x+U.x*s,y:P.y+U.y*s}; const p2={x:p1.x+V.x*s,y:p1.y+V.y*s}; const p3={x:P.x+V.x*s,y:P.y+V.y*s}; ctx.save(); ctx.fillStyle='#111827'; ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.lineTo(p3.x,p3.y); ctx.closePath(); ctx.fill(); ctx.restore(); }
+  function drawUser(){ 
+    if(dragging && tempPoint && previewEnd){ ctx.save(); ctx.lineWidth=4; ctx.setLineDash([10,8]); ctx.strokeStyle='#0ea5e9'; const p1=toCanvas(tempPoint), p2=toCanvas(previewEnd); ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); ctx.restore(); }
+    if(userLine){ ctx.lineWidth=4; ctx.strokeStyle='#0ea5e9'; const p1=toCanvas(userLine.p1), p2=toCanvas(userLine.p2); ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); }
+    const cross=dragging?previewEnd:hoverPoint; 
+    if(cross){ const p=toCanvas(cross); ctx.save(); ctx.strokeStyle='#ef4444'; ctx.lineWidth=2; const L=Math.max(12,cellS*0.35); ctx.beginPath(); ctx.moveTo(p.x-L,p.y); ctx.lineTo(p.x+L,p.y); ctx.moveTo(p.x,p.y-L); ctx.lineTo(p.x,p.y+L); ctx.stroke(); ctx.beginPath(); ctx.fillStyle='#ef4444'; ctx.arc(p.x,p.y,2.5,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(rightAngleAt){ drawRightAngle(rightAngleAt); }
+  }
+  function paint(){ drawGrid(); drawAB(); drawUser(); }
+
+  // Generation
+  function gridReachable(C,step){ const maxK=Math.max(COLS,ROWS)+2; for(const s of [-1,1]) for(let k=1;k<=maxK;k++){ const x=C.x+s*k*step.x, y=C.y+s*k*step.y; if(x>=0&&x<=COLS&&y>=0&&y<=ROWS) return true; } return false; }
+  function genBoard(mode){
+    const MAX=500, NEAR=8; 
+    let A_,B_,C_;
+    outer: for(let t=0;t<MAX;t++){
+      const ax=randInt(2,COLS-4), ay=randInt(2,Math.floor(ROWS*0.6));
+      const bx=randInt(ax+2,COLS-1), by=randInt(Math.floor(ROWS*0.4),ROWS-1);
+      if(ax===bx && ay===by) continue;
+      A_={x:ax,y:ay}; B_={x:bx,y:by};
+      const basis=stepBases(A_,B_);
+      for(let k=0;k<200;k++){
+        const cx=randInt(2,COLS-2), cy=randInt(2,ROWS-2); const Cc={x:cx,y:cy};
+        if((Cc.x===A_.x&&Cc.y===A_.y)||(Cc.x===B_.x&&Cc.y===B_.y)) continue;
+        if(((B_.y-A_.y)*(Cc.x-A_.x) - (B_.x-A_.x)*(Cc.y-A_.y)) === 0) continue;
+        const canPara=gridReachable(Cc,basis.para), canPerp=gridReachable(Cc,basis.perp);
+        if(!(canPara&&canPerp)) continue;
+        if(mode==='paraC'){ C_=Cc; break outer; }
+        const perpLine={p1:Cc,p2:{x:Cc.x+basis.perp.x,y:Cc.y+basis.perp.y}};
+        const inter=segInterInf(perpLine,{p1:A_,p2:B_});
+        if(inter && onSegGrid(inter,A_,B_)){
+          const d=Math.hypot(inter.x-Cc.x, inter.y-Cc.y);
+          if(d<=NEAR){ C_=Cc; break outer; }
+        }
+      }
+    }
+    if(!A_){ A_={x:4,y:2}; B_={x:14,y:8}; C_={x:7,y:5}; }
+    return {A:A_,B:B_,C:C_};
+  }
+
+  // HUD
+  function updateHUD(){
+    qlabel.textContent=`Q ${qIndex+1} / ${TOTAL}`;
+    scoreEl.textContent=`Score: ${marks.reduce((a,b)=>a+b,0)} / ${TOTAL}`;
+    modeSel.value=order[qIndex];
+    const txt=(modeSel.value==='paraC')? 'Q: Draw a line PARALLEL to AB that passes through C. Click-hold–drag–release. Use the red cross as a guide to start or end your line.' : 'Q: Draw a line PERPENDICULAR to AB that passes through C and meets AB. Click-hold–drag–release. Use the red cross as a guide to start or end your line.';
+    promptEl.className='prompt'; promptEl.textContent=txt; statusEl.textContent=txt;
+    btnAction.textContent='Check'; btnAction.dataset.mode='check'; btnAction.disabled=!userLine;
+    checked=false;
+  }
+
+  function loadQuestion(){
+    rightAngleAt=null; userLine=null; tempPoint=null; previewEnd=null; dragging=false;
+    if(!boards[qIndex]) boards[qIndex]=genBoard(order[qIndex]);
+    ({A,B,C}=boards[qIndex]);
+    updateHUD(); paint();
+  }
+
+  // ----- EXACT GRID CHECKS -----
+  function vec(P,Q){ return {dx:Q.x-P.x, dy:Q.y-P.y}; }
+  function isParallel(v1,v2){ return (v1.dx*v2.dy - v1.dy*v2.dx) === 0; }
+  function isPerp(v1,v2){ return (v1.dx*v2.dx + v1.dy*v2.dy) === 0; }
+  function passesThroughPoint(L,P){
+    const v=vec(L.p1,L.p2), w=vec(L.p1,P);
+    const cross = v.dx*w.dy - v.dy*w.dx;
+    if(cross !== 0) return false;
+    return onSegGrid(P, L.p1, L.p2);
+  }
+
+  // Check (Next only when correct)
+  function doCheck(){
+    if(!userLine) return;
+
+    const vAB = vec(A,B);
+    const vU  = vec(userLine.p1,userLine.p2);
+
+    const passC = passesThroughPoint(userLine, C);
+    const mode = modeSel.value;
+    const angleOK = (mode === 'paraC') ? isParallel(vAB, vU)
+                                       : isPerp(vAB, vU);
+
+    let inter=null, touches=true;
+    if(mode==='perpC' && angleOK && passC){
+      inter = segInterInf(userLine,{p1:A,p2:B});
+      touches = !!inter && onSegGrid(inter,A,B);
+    }
+
+    const correctNow = angleOK && passC && (mode!=='perpC' || touches);
+
+    if(correctNow){
+      marks[qIndex]=1;
+      rightAngleAt=(mode==='perpC'&&inter)? toCanvas(inter):null;
+      promptEl.className='prompt good'; promptEl.textContent='Correct!';
+      btnAction.textContent='Next'; btnAction.dataset.mode='next'; btnAction.disabled=false;
+      checked=true;
+    } else {
+      rightAngleAt=null;
+      promptEl.className='prompt bad';
+      promptEl.textContent='Incorrect — your line must be '+(mode==='paraC'?'parallel':'perpendicular')+' and pass through C.';
+      btnAction.textContent='Check'; btnAction.dataset.mode='check';
+      checked=false;
+    }
+    paint();
+  }
+
+  // Events — lock interactions once solved so Next remains available
+  canvas.addEventListener('mousedown', e=>{
+    if(checked && btnAction.dataset.mode==='next') return; // locked after correct
+    const p=toGrid(e.offsetX,e.offsetY);
+    tempPoint=p; dragging=true; previewEnd=p; hoverPoint=null; userLine=null;
+    btnAction.disabled=true; paint();
+  });
+  canvas.addEventListener('mousemove', e=>{
+    if(checked && btnAction.dataset.mode==='next') return;
+    const p=toGrid(e.offsetX,e.offsetY);
+    if(dragging){ previewEnd=p; } else { hoverPoint=p; }
+    paint();
+  });
+  canvas.addEventListener('mouseup', e=>{
+    if(checked && btnAction.dataset.mode==='next') return;
+    const p=toGrid(e.offsetX,e.offsetY);
+    if(dragging && tempPoint){
+      if(p.x!==tempPoint.x || p.y!==tempPoint.y){
+        userLine={p1:tempPoint,p2:p};
+        if(!checked) btnAction.disabled=false;
+      }
+    }
+    dragging=false; previewEnd=null; paint();
+  });
+  canvas.addEventListener('mouseleave', ()=>{
+    if(checked && btnAction.dataset.mode==='next') return;
+    if(dragging){ dragging=false; previewEnd=null; paint(); }
+  });
+  btnClear.addEventListener('click', ()=>{
+    if(checked && btnAction.dataset.mode==='next') return; // ignore clear after correct
+    userLine=null; tempPoint=null; previewEnd=null; dragging=false; btnAction.disabled=true; rightAngleAt=null; paint();
+  });
+
+  // Unified action button
+  btnAction.addEventListener('click', ()=>{
+    if(btnAction.dataset.mode==='next' || checked){
+      qIndex=(qIndex+1)%TOTAL; loadQuestion();
+    } else {
+      doCheck();
+    }
+  });
+
+  // Start
+  loadQuestion();
+}
+</script>
+</body>
+</html>
