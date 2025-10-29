@@ -1,24 +1,21 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<title>P3 Parallel & Perpendicular Lines — Practice + Test (Desktop)</title>
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+/>
+<title>P3 Parallel & Perpendicular — Mobile</title>
 
-<!-- === xAPI / SLS base (must match working reference style) === -->
-
+<!-- === xAPI / SLS base (unchanged logic) === -->
 <script>
-  /* Use your real URL Activity ID exactly like you said */
   window.ACTIVITY_ID = "https://limkimsze-maker.github.io/activityperp/";
 </script>
-
 <script src="xapiwrapper.min.js"></script>
-
 <script src="index.js" defer></script>
 
-<!-- === New-Session Clear Kit (aligned with fractions reference) === -->
-
+<!-- === New-Session Clear Kit (unchanged logic) === -->
 <script>
 (function (global){
   const Kit = {
@@ -39,18 +36,15 @@
 
       const isNew = FORCE || prev !== CURR_SCOPE;
       if (isNew) {
-        // trigger hidden reset button so we can reset internal data
         if (opts.clickButtonId) {
           const btn = document.getElementById(opts.clickButtonId);
           if (btn) {
             try { btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); } catch (e) {}
           }
         }
-        // allow caller hook (we use this to reset arrays etc. in this geometry app)
         if (typeof opts.onNewSession === 'function') {
           try { opts.onNewSession(); } catch (e) {}
         }
-        // optionally push score=0 at fresh start (we disable this below by passing pushZero:false)
         if (opts.pushZero !== false) {
           const payload = { score: 0 };
           try { if (typeof global.storeState === 'function') global.storeState(payload); } catch (e) {}
@@ -66,708 +60,737 @@
 </script>
 
 <style>
-  :root{
-    --ink:#0f172a; --muted:#475569;
-    --bg-grad1:#eef2ff; --bg-grad2:#fff7ed;
-    --card-bg:#ffffff; --card-border:#e5e7eb;
-    --accent:#6366f1;
-    --good-text:#065f46;
-    --bad-text:#7f1d1d;
-    --warn-bg:#fff7d6; --warn-border:#facc15; --warn-text:#1f2937;
-    --grid:#e2e8f0; --grid-bold:#cbd5e1;
-    --tool-border:#0f172a;
-    --tool-handle:#6366f1;
-    --tool-resize:#10b981;
-  }
+:root{
+  --ink:#0f172a; --muted:#475569;
+  --bg-grad1:#eef2ff; --bg-grad2:#fff7ed;
+  --card-bg:#ffffff; --card-border:#e5e7eb;
+  --accent:#6366f1;
+  --good-text:#065f46;
+  --bad-text:#7f1d1d;
+  --warn-bg:#fff7d6; --warn-border:#facc15; --warn-text:#1f2937;
+  --grid:#e2e8f0; --grid-bold:#cbd5e1;
+  --tool-border:#0f172a;
+  --tool-handle:#6366f1;
+  --tool-resize:#10b981;
+  --header-h:64px;        /* top header block */
+  --canvas-h:60vh;        /* main drawing zone height target on phone */
+  --controls-h:auto;      /* bottom controls auto-wrap */
+  --safe-pad:12px;        /* outer breathing space */
+  --font-main:system-ui,Segoe UI,Roboto,Inter,Arial,sans-serif;
+}
 
-  *{box-sizing:border-box;}
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
 
-  html, body{
-    margin:0;
-    height:100vh;
-    background:linear-gradient(135deg,var(--bg-grad1),var(--bg-grad2));
-    color:var(--ink);
-    font-family:system-ui,Segoe UI,Roboto,Inter,Arial,sans-serif;
-    -webkit-text-size-adjust:100%;
-    overscroll-behavior:contain;
-    overflow:hidden; /* no page scroll */
-  }
+html, body{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  min-height:100vh;
+  background:linear-gradient(135deg,var(--bg-grad1),var(--bg-grad2));
+  color:var(--ink);
+  font-family:var(--font-main);
+  -webkit-text-size-adjust:100%;
+  overscroll-behavior:none;
+  overflow:hidden; /* lock page scroll */
+  position:fixed;  /* super lock iOS bounce */
+  inset:0;
+}
 
-  /* === hidden teacher / xAPI debug panel (match fractions structure) === */
-  .container{
-    background:#ffffff;
-    padding:10px;
-    border-radius:8px;
-    box-shadow:0 0 5px rgba(0,0,0,.08);
-    width:590px;
-    height:470px;
-    overflow:auto;
-    display:none; /* hidden from pupils */
-  }
-  #xapiBase{display:block;}
-  .center{text-align:center;}
-  input, button{
-    margin:5px;
-    padding:6px;
-    font-size:14px;
-    border:1px solid #ccc;
-    border-radius:4px;
-  }
-  button{
-    background-color:#28a745;
-    color:#fff;
-    cursor:pointer;
-    border:none;
-  }
-  button:hover{background-color:#218838;}
-  .output-container{
-    margin-top:10px;
-    padding:5px;
-    border:1px solid #ddd;
-    border-radius:4px;
-    background-color:#fafafa;
-    overflow:auto;
-    max-height:200px;
-  }
-  pre{
-    background-color:#e9ecef;
-    padding:5px;
-    border-radius:4px;
-    white-space:pre-wrap;
-    word-wrap:break-word;
-    margin:0;
-    overflow-x:auto;
-  }
-  .separator{border:0;border-top:1px solid #ddd;margin:6px 0;}
+/* === teacher/xAPI debug panel (kept for SLS compatibility, hidden from kids) === */
+.container{
+  display:none;
+  background:#ffffff;
+  padding:10px;
+  border-radius:8px;
+  box-shadow:0 0 5px rgba(0,0,0,.08);
+  width:590px;
+  height:470px;
+  overflow:auto;
+  font-size:13px;
+  line-height:1.3;
+}
+#xapiBase{display:block;}
+.center{text-align:center;}
+input, button{
+  margin:5px;
+  padding:6px;
+  font-size:14px;
+  border:1px solid #ccc;
+  border-radius:4px;
+}
+button{
+  background-color:#28a745;
+  color:#fff;
+  cursor:pointer;
+  border:none;
+}
+button:hover{background-color:#218838;}
+.output-container{
+  margin-top:10px;
+  padding:5px;
+  border:1px solid #ddd;
+  border-radius:4px;
+  background-color:#fafafa;
+  overflow:auto;
+  max-height:200px;
+  font-size:12px;
+  line-height:1.4;
+  word-break:break-word;
+}
+pre{
+  background-color:#e9ecef;
+  padding:5px;
+  border-radius:4px;
+  white-space:pre-wrap;
+  word-wrap:break-word;
+  margin:0;
+  overflow-x:auto;
+  font-size:12px;
+  line-height:1.4;
+}
+.separator{border:0;border-top:1px solid #ddd;margin:6px 0;}
 
-  /* ===== main student app frame ===== */
-  .app{
-    background:var(--card-bg);
-    border:2px solid var(--card-border);
-    border-radius:16px;
-    box-shadow:0 12px 24px rgb(0 0 0 / 0.08);
+/* === MOBILE APP LAYOUT ===================================== */
+/* main card now fills screen with minimal gutters */
+.app{
+  position:absolute;
+  left:0;top:0;right:0;bottom:0;
+  padding:var(--safe-pad);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  background:var(--card-bg);
+  border-top:2px solid var(--card-border);
+  border-left:2px solid var(--card-border);
+  border-right:2px solid var(--card-border);
+  border-bottom:2px solid var(--card-border);
+  border-radius:16px;
+  box-shadow:0 12px 24px rgb(0 0 0 / 0.08);
 
-    width:calc(100vw - 32px);
-    max-width:1280px;
-    height:calc(100vh - 32px);
-    max-height:calc(100vh - 32px);
-    margin:16px auto;
-    padding:12px 16px;
+  /* allow internal scroll if absolutely needed, but prefer fitting */
+  overflow:hidden;
+}
 
-    display:flex;
-    flex-direction:column;
-    overflow:hidden; /* keep internals from forcing body scroll */
-  }
+/*** HEADER: title + tabs + instructions row ***/
+header.app-header{
+  flex-shrink:0;
+  text-align:center;
+  font-weight:800;
+  font-size:14px;
+  line-height:1.2;
+  color:var(--ink);
+}
+header.app-header small{
+  display:block;
+  font-size:11px;
+  font-weight:600;
+  color:#6b7280;
+  line-height:1.2;
+  margin-top:2px;
+}
 
-  /**************************************
-   * TOP HEADER ROW
-   **************************************/
-  header.app-header{
-    flex-shrink:0;
-    text-align:center;
-    font-weight:800;
-    font-size:16px;
-    line-height:1.3;
-    color:var(--ink);
-    margin-bottom:4px;
-  }
-  header.app-header small{
-    display:block;
-    font-size:12px;
-    font-weight:600;
-    color:#6b7280;
-    margin-top:2px;
-    line-height:1.2;
-  }
+/* section A/B tab buttons sit in 1 row, wrap if too narrow */
+.section-tabs{
+  flex-shrink:0;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:4px;
+  margin-top:4px;
+}
+.tab-btn{
+  border-radius:999px;
+  padding:4px 8px;
+  background:#fff;
+  border:2px solid #d1d5db;
+  color:#111827;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.2;
+  min-height:28px;
+}
+.tab-btn.active{
+  border-color:var(--accent);
+  color:var(--accent);
+}
+.tab-btn[aria-disabled="true"]{
+  opacity:.4;
+  pointer-events:none;
+}
 
-  .section-tabs{
-    flex-shrink:0;
-    display:flex;
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:6px;
-    margin-bottom:6px;
-  }
-  .tab-btn{
-    border-radius:999px;
-    padding:6px 10px;
-    background:#fff;
-    border:2px solid #d1d5db;
-    color:#111827;
-    font-size:12px;
-    font-weight:700;
-    line-height:1.2;
-    min-height:32px;
-  }
-  .tab-btn.active{
-    border-color:var(--accent);
-    color:var(--accent);
-  }
-  .tab-btn[aria-disabled="true"]{
-    opacity:.4;
-    pointer-events:none;
-  }
+/* row with yellow prompt + Q/Score badges */
+.activity-header-row{
+  flex-shrink:0;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:4px;
+}
 
-  /**************************************
-   * HEADER BAR UNDER TABS
-   * (yellow instructions + Q / Score)
-   **************************************/
-  .activity-header-row{
-    flex-shrink:0;
-    display:flex;
-    align-items:flex-start;
-    justify-content:space-between;
-    gap:12px;
-    margin-bottom:6px;
-  }
+/* instructions box smaller text for phone */
+#promptBox{
+  flex:1 1 auto;
+  background:var(--warn-bg);
+  border:2px solid var(--warn-border);
+  border-radius:8px;
+  color:var(--warn-text);
+  font-size:11px;
+  font-weight:700;
+  line-height:1.3;
+  text-align:left;
+  padding:6px 8px;
+  min-width:0;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
 
-  /* prompt-box instructions (ID promptBox) */
-  #promptBox{
-    flex:1 1 auto;
+/* side status cluster */
+.side-status{
+  flex:0 0 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:4px;
+  position:relative;
+  min-width:70px;
+}
+.side-status .badge{
+  background:#fff;
+  border:1px solid #d1d5db;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:600;
+  line-height:1.2;
+  padding:3px 6px;
+  white-space:nowrap;
+}
+#statusBadge{
+  position:absolute;
+  right:0;
+  bottom:-40px;
+  background:#0f172a;
+  color:#fff;
+  border-radius:10px;
+  padding:6px 8px;
+  font-size:10px;
+  font-weight:700;
+  line-height:1.3;
+  min-width:140px;
+  max-width:200px;
+  max-height:4.8em;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  display:none;
+  box-shadow:0 8px 24px rgb(0 0 0 / .2);
+}
+#topInfoText{
+  position:absolute;
+  left:-9999px;
+  top:auto;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+}
 
-    background:#fff7d6;
-    border:2px solid #facc15;
-    border-radius:8px;
-    color:#1f2937;
+/*** MIDDLE = CANVAS AREA + LEGEND ****************************/
+/* middle-flex now dominates height */
+.middle-flex{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:2px solid var(--card-border);
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 2px 6px rgb(0 0 0 / .05);
+}
 
-    font-size:14px;
-    font-weight:700;
-    line-height:1.4;
-    text-align:left;
-    white-space:normal;
+/* board-card stripped padding so canvas can grow */
+.board-card{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:12px;
+}
 
-    padding:8px 12px;
-    min-width:0;
-  }
+/* canvas-flex-zone tries to enforce a big drawing box */
+.canvas-flex-zone{
+  flex:1 1 auto;
+  min-height:0;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+}
+.canvas-wrap{
+  position:relative;
+  border-radius:8px;
+  overflow:hidden;
+  touch-action:none;
+  width:100%;
+  height:100%;
+  background:#ffffff;
+  box-shadow:0 2px 6px rgb(0 0 0 / .08);
+}
+canvas{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  background:#ffffff;
+  border-radius:8px;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
 
-  /* right side: Q / Score cluster */
-  .side-status{
-    flex:0 0 auto;
-    display:flex;
-    flex-direction:column;
-    align-items:flex-end;
-    gap:4px;
-    position:relative;
-  }
+/* tool overlay */
+.tool-layer{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+.tool{
+  position:absolute;
+  background:transparent;
+  border:2px solid var(--tool-border);
+  border-radius:8px;
+  box-shadow:0 8px 16px rgb(0 0 0 / 0.15);
+  touch-action:none;
+  pointer-events:auto;
+  transform-origin:top left;
+  opacity:1;
+  transition:opacity .1s linear;
+}
+.tool.dragging{opacity:.3;}
+.tool.hidden{display:none;}
 
-  .side-status .badge{
-    background:#fff;
-    border:1px solid #d1d5db;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:600;
-    line-height:1.2;
-    padding:4px 8px;
-    white-space:nowrap;
-  }
+.RotateHandle,
+.ResizeHandle{
+  position:absolute;
+  min-width:32px;
+  min-height:32px;
+  width:32px;
+  height:32px;
+  border-radius:999px;
+  background:var(--tool-handle);
+  border:2px solid #fff;
+  box-shadow:0 4px 8px rgb(0 0 0 / .4);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:12px;
+  font-weight:800;
+  line-height:1;
+  touch-action:none;
+  pointer-events:auto;
+  text-align:center;
+}
+.ResizeHandle{
+  background:var(--tool-resize);
+}
+.handle-icon{
+  font-size:13px;
+  line-height:1;
+  font-weight:800;
+}
+.handle-label{
+  font-size:8px;
+  line-height:1.1;
+  font-weight:800;
+  margin-top:1px;
+  text-transform:uppercase;
+  letter-spacing:-0.02em;
+  color:#fff;
+}
+.move-area{
+  position:absolute;
+  inset:0;
+  touch-action:none;
+  pointer-events:auto;
+}
 
-  /* Saved-to-SLS badge (aligned with fractions' #statusBadge behaviour) */
-  #statusBadge{
-    position:absolute;
-    left:auto;
-    right:0;
-    bottom:-38px;
-    background:#0f172a;
-    color:#fff;
-    border-radius:12px;
-    padding:6px 8px;
-    font-size:11px;
-    font-weight:700;
-    line-height:1.3;
-    min-width:160px;
-    max-width:220px;
-    max-height:4.8em;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    display:none;
-    box-shadow:0 8px 24px rgb(0 0 0 / .2);
-  }
-  #statusBadgeText{}
+/* set square visual */
+.tool.setsquare{
+  width:110px;
+  height:110px;
+  background:rgba(37,99,235,0.35);
+  border:2px solid rgba(30,41,59,0.8);
+  clip-path:polygon(0% 0%,100% 0%,0% 100%);
+  border-radius:0;
+}
+.tool.setsquare::after{
+  content:"";
+  position:absolute;
+  left:15%;
+  top:15%;
+  width:50%;
+  height:50%;
+  background:rgba(255,255,255,0.3);
+  border:2px solid rgba(30,41,59,0.5);
+  clip-path:polygon(0% 0%,100% 0%,0% 100%);
+  pointer-events:none;
+  border-radius:0;
+}
 
-  /* we still update #topInfoText in JS, so keep it invisible but present */
-  #topInfoText{
-    position:absolute;
-    left:-9999px;
-    top:auto;
-    width:1px;
-    height:1px;
-    overflow:hidden;
-  }
+/* ruler visual */
+.tool.ruler{
+  width:220px;
+  height:42px;
+  background:rgba(250,204,21,0.55);
+  border:2px solid rgba(30,41,59,0.8);
+  border-radius:4px;
+  display:flex;
+  align-items:flex-end;
+  padding:4px 4px 4px;
+}
+.ruler-marks{
+  flex:1;
+  height:100%;
+  display:flex;
+  align-items:flex-end;
+}
+.ruler-marks div{
+  width:3px;
+  background:#0f172a;
+  margin-right:5px;
+}
+.ruler-marks div.big   { height:24px; }
+.ruler-marks div.small { height:14px; }
 
-  /**************************************
-   * CANVAS AREA
-   **************************************/
-  .middle-flex{
-    flex:1 1 auto;
-    min-height:0;
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
-  }
+/* legend row compact */
+.legend-row{
+  flex-shrink:0;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+  padding:6px 8px 8px;
+  font-size:11px;
+  line-height:1.3;
+  background:#fff;
+  border-top:1px solid var(--card-border);
+}
+.legend-left-group{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+}
+.legend-item{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.legend-color{
+  width:18px;
+  height:4px;
+  border-radius:2px;
+}
+.legend-color.given{background:#64748b;}
+.legend-color.user {background:#0ea5e9;}
 
-  .board-card{
-    flex:1 1 auto;
-    min-height:0;
+.legend-status{
+  margin-left:auto;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.3;
+  text-align:right;
+  flex:1;
+  min-width:100px;
+}
+.legend-status.good{color:var(--good-text);}
+.legend-status.bad{ color:var(--bad-text);}
 
-    background:#fff;
-    border:1px solid var(--card-border);
-    border-radius:16px;
+/*** BOTTOM CONTROLS = thumb bar ******************************/
+.bottom-bar{
+  flex-shrink:0;
+  background:#fff;
+  border-top:2px solid var(--card-border);
+  border-radius:12px;
+  box-shadow:0 -4px 12px rgb(0 0 0 / .05);
+  padding:8px;
+}
+.controls-row{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  justify-content:center;
+  gap:6px 6px;
+  width:100%;
+}
+.big-btn{
+  flex:1 1 calc(33% - 6px);
+  min-width:90px;
+  min-height:36px;
+  padding:6px 8px;
+  border-radius:10px;
+  border:2px solid #d1d5db;
+  background:#fff;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.2;
+  color:#111827;
+  text-align:center;
+}
+.big-btn.primary{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+.big-btn[disabled]{opacity:.4;}
 
-    padding:0; /* maximise drawable space */
+/*** MINI SCORE PANEL + CREDIT *******************************/
+#miniPanel{
+  display:none;
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:72px;
+  max-width:260px;
+  background:#ffffff;
+  border:2px solid #d1d5db;
+  border-radius:16px;
+  box-shadow:0 10px 24px rgb(0 0 0 / .18);
+  padding:10px 12px;
+  font-size:12px;
+  font-weight:600;
+  line-height:1.4;
+  color:#1f2937;
+  z-index:9999;
+}
+#miniPanel strong{
+  display:block;
+  font-weight:800;
+  color:#111827;
+  font-size:13px;
+  margin-bottom:4px;
+}
+#miniPanel .teacher-note{
+  font-size:10px;
+  color:#6b7280;
+  font-weight:500;
+  margin-top:6px;
+  line-height:1.3;
+  word-break:break-word;
+  white-space:normal;
+}
 
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
-  }
+.credit-foot{
+  position:fixed;
+  bottom:8px;
+  left:8px;
+  color:#6b7280;
+  font-size:10px;
+  font-weight:600;
+  background:rgba(255,255,255,0.7);
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  padding:4px 6px;
+  line-height:1.2;
+  pointer-events:none;
+  user-select:none;
+  z-index:9998;
+}
 
-  .canvas-flex-zone{
-    flex:1 1 auto;
-    min-height:0;
-
-    display:flex;
-    align-items:stretch;
-    justify-content:stretch;
-    position:relative;
-    overflow:hidden;
-  }
-
-  .canvas-wrap{
-    position:relative;
-    border-radius:12px;
-    overflow:hidden;
-    touch-action:none;
-
-    width:100%;
-    height:100%;
-
-    max-width:none;
-    max-height:none;
-    min-width:0;
-    min-height:0;
-
-    background:#ffffff;
-    box-shadow:0 2px 6px rgb(0 0 0 / .08);
-  }
-
-  canvas{
-    width:100%;
-    height:100%;
-    object-fit:contain;
-    display:block;
-    background:#ffffff;
-    border-radius:12px;
-    -webkit-user-select:none;
-    user-select:none;
-    -webkit-touch-callout:none;
-  }
-
-  .tool-layer{
-    position:absolute;
-    left:0;top:0;right:0;bottom:0;
-    pointer-events:none;
-  }
-  .tool{
-    position:absolute;
-    background:transparent;
-    border:2px solid var(--tool-border);
-    border-radius:8px;
-    box-shadow:0 8px 16px rgb(0 0 0 / 0.15);
-    touch-action:none;
-    pointer-events:auto;
-    transform-origin:top left;
-    opacity:1;
-    transition:opacity .1s linear;
-  }
-  .tool.dragging{ opacity:0.3; }
-  .tool.hidden{ display:none; }
-
-  .RotateHandle,
-  .ResizeHandle{
-    position:absolute;
-    min-width:36px;
-    min-height:36px;
-    width:36px;
-    height:36px;
-    border-radius:999px;
-    background:var(--tool-handle);
-    border:2px solid #fff;
-    box-shadow:0 4px 8px rgb(0 0 0 / .4);
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    color:#fff;
-    font-size:13px;
-    font-weight:800;
-    line-height:1;
-    touch-action:none;
-    pointer-events:auto;
-    text-align:center;
-  }
-  .ResizeHandle{ background:var(--tool-resize); }
-  .handle-icon{
-    font-size:14px;
-    line-height:1;
-    font-weight:800;
-  }
-  .handle-label{
-    font-size:9px;
-    line-height:1.1;
-    font-weight:800;
-    margin-top:2px;
-    text-transform:uppercase;
-    letter-spacing:-0.02em;
-    color:#fff;
-  }
-  .move-area{
-    position:absolute;
-    left:0;top:0;right:0;bottom:0;
-    touch-action:none;
-    pointer-events:auto;
-  }
-
-  /* set square look */
-  .tool.setsquare{
-    width:110px;
-    height:110px;
-    background:rgba(37,99,235,0.35);
-    border:2px solid rgba(30,41,59,0.8);
-    clip-path:polygon(0% 0%,100% 0%,0% 100%);
-    border-radius:0;
-  }
-  .tool.setsquare::after{
-    content:"";
-    position:absolute;
-    left:15%;
-    top:15%;
-    width:50%;
-    height:50%;
-    background:rgba(255,255,255,0.3);
-    border:2px solid rgba(30,41,59,0.5);
-    clip-path:polygon(0% 0%,100% 0%,0% 100%);
-    pointer-events:none;
-    border-radius:0;
-  }
-
-  /* ruler look */
-  .tool.ruler{
-    width:220px;
-    height:42px;
-    background:rgba(250,204,21,0.55);
-    border:2px solid rgba(30,41,59,0.8);
-    border-radius:4px;
-    display:flex;
-    align-items:flex-end;
-    padding:4px 4px 4px;
-  }
-  .ruler-marks{
-    flex:1;
-    height:100%;
-    display:flex;
-    align-items:flex-end;
-  }
-  .ruler-marks div{
-    width:3px;
-    background:#0f172a;
-    margin-right:5px;
-  }
-  .ruler-marks div.big   { height:24px; }
-  .ruler-marks div.small { height:14px; }
-
-  /**************************************
-   * LEGEND
-   **************************************/
-  .legend-row{
-    margin-top:4px;
-    padding:8px 12px 12px;
-  }
-  .legend-left-group{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:12px;
-  }
-  .legend-item{
-    display:flex;
-    align-items:center;
-    gap:6px;
-  }
-  .legend-color{
-    width:20px;
-    height:4px;
-    border-radius:2px;
-  }
-  .legend-color.given{ background:#64748b; }
-  .legend-color.user { background:#0ea5e9; }
-
-  .legend-status{
-    margin-left:auto;
-    font-size:12px;
-    font-weight:700;
-    line-height:1.3;
-    text-align:right;
-    flex:1;
-  }
-  .legend-status.good{ color:var(--good-text); }
-  .legend-status.bad{  color:var(--bad-text);  }
-
-  /**************************************
-   * BOTTOM CONTROLS ROW
-   **************************************/
-  .bottom-bar{
-    flex-shrink:0;
-    display:flex;
-    justify-content:center;
-    margin-top:6px;
-  }
-  .controls-row{
-    display:flex;
-    flex-wrap:nowrap;
-    align-items:flex-start;
-    justify-content:flex-start;
-    gap:6px 10px;
-    width:100%;
-    max-width:900px;
-  }
-  .big-btn{
-    flex:0 0 auto;
-    min-height:32px;
-    padding:8px 12px;
-    border-radius:12px;
-    border:2px solid #d1d5db;
-    background:#fff;
-    font-size:12px;
-    font-weight:700;
-    line-height:1.2;
-    color:#111827;
-    cursor:pointer;
-  }
-  .big-btn.primary{
-    background:var(--accent);
-    border-color:var(--accent);
-    color:#fff;
-  }
-  .big-btn[disabled]{ opacity:.4; }
-
-  /**************************************
-   * MINI PANEL + CREDIT
-   **************************************/
-  #miniPanel{
-    display:none;
-    position:fixed;
-    bottom:8px;
-    right:8px;
-    max-width:240px;
-    background:#ffffff;
-    border:2px solid #d1d5db;
-    border-radius:16px;
-    box-shadow:0 10px 24px rgb(0 0 0 / .18);
-    padding:10px 12px;
-    font-size:12px;
-    font-weight:600;
-    line-height:1.4;
-    color:#1f2937;
-    z-index:9999;
-  }
-  #miniPanel strong{
-    display:block;
-    font-weight:800;
-    color:#111827;
-    font-size:13px;
-    margin-bottom:4px;
-  }
-  #miniPanel .teacher-note{
-    font-size:11px;
-    color:#6b7280;
-    font-weight:500;
-    margin-top:6px;
-  }
-
-  .credit-foot{
-    position:fixed;
-    bottom:8px;
-    left:8px;
-    color:#6b7280;
-    font-size:11px;
-    font-weight:600;
-    background:rgba(255,255,255,0.7);
-    border:1px solid #d1d5db;
-    border-radius:10px;
-    padding:4px 8px;
-    line-height:1.2;
-    pointer-events:none;
-    user-select:none;
-  }
+/* utility classes reused in JS drawing */
+.hidden{display:none;}
 </style>
-
 </head>
 
 <body>
 
-<!-- =========================
-     Hidden xAPI base / teacher panel
-     (mirrors fractions structure and IDs so teachers can debug,
-      but it's still display:none via .container)
-     ========================= -->
-
+<!-- HIDDEN TEACHER / DEBUG PANEL (kept for xAPI/SLS IDs etc) -->
 <div class="container" id="xapiOuter">
   <div id="xapiBase">
     <p class="center"><strong>HTML5 Interactive</strong></p>
 
-```
-<div class="center">
-  <label for="score-input">Score:</label>
-  <input type="text" id="score-input" />
-  <label for="feedback-input">Feedback:</label>
-  <input type="text" id="feedback-input" placeholder="Enter feedback" />
-</div>
+    <div class="center">
+      <label for="score-input">Score:</label>
+      <input type="text" id="score-input" />
+      <label for="feedback-input">Feedback:</label>
+      <input
+        type="text"
+        id="feedback-input"
+        placeholder="Enter feedback"
+      />
+    </div>
 
-<div class="center">
-  <button id="save-store" type="button">Send/Save</button>
-  <button id="clear-inputs" type="button">Clear</button>
-  <!-- hidden "new session" reset button that ClearKit can click -->
-  <button id="newSessionBtn" type="button" style="display:none;">_newSession</button>
-</div>
+    <div class="center">
+      <button id="save-store" type="button">Send/Save</button>
+      <button id="clear-inputs" type="button">Clear</button>
+      <button
+        id="newSessionBtn"
+        type="button"
+        style="display:none;"
+      >_newSession</button>
+    </div>
 
-<div class="output-container">
-  <pre id="result"></pre>
-  <hr class="separator" />
-  <pre id="getState"></pre>
-  <hr class="separator" />
-  <pre id="questionId"></pre>
-  <pre id="userId"></pre>
-  <pre id="cookieId"></pre>
-  <!-- helper so teacher/debugger can see the Activity ID string -->
-  <a id="activityLink"
-    href="https://limkimsze-maker.github.io/activityperp/"
-    target="_blank"
-    rel="noopener">ActivityID</a>
-</div>
-```
-
+    <div class="output-container">
+      <pre id="result"></pre>
+      <hr class="separator" />
+      <pre id="getState"></pre>
+      <hr class="separator" />
+      <pre id="questionId"></pre>
+      <pre id="userId"></pre>
+      <pre id="cookieId"></pre>
+      <a
+        id="activityLink"
+        href="https://limkimsze-maker.github.io/activityperp/"
+        target="_blank"
+        rel="noopener"
+      >ActivityID</a>
+    </div>
   </div>
 </div>
 
+<!-- ================= APP ================== -->
 <main class="app" id="appCard" role="main">
 
-  <!-- Title + sections -->
-
+  <!-- Header / title -->
   <header class="app-header">
     <div>P3 Parallel &amp; Perpendicular Lines</div>
     <small>Section A: Practise · Section B: Test (first try counted)</small>
   </header>
 
+  <!-- Section tabs -->
   <div class="section-tabs">
     <button class="tab-btn active" id="btnSectionA">Section A (Practice)</button>
     <button class="tab-btn" id="btnSectionB">Section B (Test)</button>
   </div>
 
-  <!-- Compact header row with task + Q/Score + status badge -->
-
+  <!-- Instructions + Q/Score -->
   <div class="activity-header-row">
     <div id="promptBox">
       Practice: Draw a line PARALLEL to AB that passes through C. Your line must pass through C. Use the yellow ruler to match AB's direction.
     </div>
 
-```
-<div class="side-status">
-  <div class="badge" id="qLabel">Q 1 / 4</div>
-  <div class="badge" id="scoreBadge">Score: 0 / 10</div>
+    <div class="side-status">
+      <div class="badge" id="qLabel">Q 1 / 4</div>
+      <div class="badge" id="scoreBadge">Score: 0 / 10</div>
 
-  <!-- Saved-to-SLS badge (same idea as Fractions' #statusBadge) -->
-  <div id="statusBadge" aria-live="polite">
-    <div id="statusBadgeText">Ready. (New session score 0)</div>
-  </div>
-</div>
-```
-
+      <div id="statusBadge" aria-live="polite">
+        <div id="statusBadgeText">Ready. (New session score 0)</div>
+      </div>
+    </div>
   </div>
 
-  <!-- Info text kept for JS logic (visually hidden via CSS above) -->
-
+  <!-- hidden extra help text that JS updates -->
   <div id="topInfoText">
     Section A: Keep trying until you are correct. Drag middle = move tool. ⤢ size. ↻ rotate. Pinch/twist = resize/rotate. Tools may sit partly outside.
   </div>
 
-  <!-- Drawing / board -->
-
+  <!-- MIDDLE: canvas + legend -->
   <div class="middle-flex">
     <section class="board-card" aria-label="drawing area">
 
-```
-  <div class="canvas-flex-zone">
-    <div class="canvas-wrap" id="canvasWrap">
-      <canvas id="grid" width="1000" height="560"></canvas>
+      <div class="canvas-flex-zone">
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="grid" width="1000" height="560"></canvas>
 
-      <div class="tool-layer" id="toolLayer">
+          <div class="tool-layer" id="toolLayer">
+            <!-- Set Square Tool -->
+            <div
+              class="tool setsquare hidden"
+              id="toolSetSquare"
+              data-x="20"
+              data-y="20"
+              data-rot="0"
+              data-scale="1"
+            >
+              <div class="move-area" data-toolmove="1"></div>
 
-        <!-- Set Square Tool -->
-        <div class="tool setsquare hidden" id="toolSetSquare"
-             data-x="20" data-y="20" data-rot="0" data-scale="1">
-          <div class="move-area" data-toolmove="1"></div>
+              <div
+                class="RotateHandle"
+                data-toolrotate="1"
+                style="left:45%;top:45%;transform:translate(-50%,-50%);"
+              >
+                <div class="handle-icon">↻</div>
+                <div class="handle-label">ROTATE</div>
+              </div>
 
-          <div class="RotateHandle" data-toolrotate="1"
-               style="left:45%;top:45%;transform:translate(-50%,-50%);">
-            <div class="handle-icon">↻</div>
-            <div class="handle-label">ROTATE</div>
+              <div
+                class="ResizeHandle"
+                data-toolresize="1"
+                style="left:65%;top:65%;transform:translate(-50%,-50%);"
+              >
+                <div class="handle-icon">⤢</div>
+                <div class="handle-label">SIZE</div>
+              </div>
+            </div>
+
+            <!-- Ruler Tool -->
+            <div
+              class="tool ruler hidden"
+              id="toolRuler"
+              data-x="60"
+              data-y="60"
+              data-rot="0"
+              data-scale="1"
+            >
+              <div class="move-area" data-toolmove="1"></div>
+
+              <div
+                class="RotateHandle"
+                data-toolrotate="1"
+                style="left:50%;top:50%;transform:translate(-50%,-50%);"
+              >
+                <div class="handle-icon">↻</div>
+                <div class="handle-label">ROTATE</div>
+              </div>
+
+              <div
+                class="ResizeHandle"
+                data-toolresize="1"
+                style="left:70%;top:50%;transform:translate(-50%,-50%);"
+              >
+                <div class="handle-icon">⤢</div>
+                <div class="handle-label">SIZE</div>
+              </div>
+
+              <div class="ruler-marks">
+                <div class="big"></div>
+                <div class="small"></div>
+                <div class="small"></div>
+                <div class="small"></div>
+                <div class="big"></div>
+                <div class="small"></div>
+                <div class="small"></div>
+                <div class="small"></div>
+                <div class="big"></div>
+              </div>
+            </div>
+          </div><!-- /tool-layer -->
+        </div><!-- /canvas-wrap -->
+      </div><!-- /canvas-flex-zone -->
+
+      <div class="legend-row">
+        <div class="legend-left-group">
+          <div class="legend-item">
+            <span class="legend-color given"></span><span>Line AB</span>
           </div>
-
-          <div class="ResizeHandle" data-toolresize="1"
-               style="left:65%;top:65%;transform:translate(-50%,-50%);">
-            <div class="handle-icon">⤢</div>
-            <div class="handle-label">SIZE</div>
+          <div class="legend-item">
+            <span class="legend-color user"></span><span>Your line</span>
           </div>
         </div>
+        <div class="legend-status" id="legendStatus"></div>
+      </div>
 
-        <!-- Ruler Tool -->
-        <div class="tool ruler hidden" id="toolRuler"
-             data-x="60" data-y="60" data-rot="0" data-scale="1">
-          <div class="move-area" data-toolmove="1"></div>
-
-          <div class="RotateHandle" data-toolrotate="1"
-               style="left:50%;top:50%;transform:translate(-50%,-50%);">
-            <div class="handle-icon">↻</div>
-            <div class="handle-label">ROTATE</div>
-          </div>
-
-          <div class="ResizeHandle" data-toolresize="1"
-               style="left:70%;top:50%;transform:translate(-50%,-50%);">
-            <div class="handle-icon">⤢</div>
-            <div class="handle-label">SIZE</div>
-          </div>
-
-          <div class="ruler-marks">
-            <div class="big"></div>
-            <div class="small"></div>
-            <div class="small"></div>
-            <div class="small"></div>
-            <div class="big"></div>
-            <div class="small"></div>
-            <div class="small"></div>
-            <div class="small"></div>
-            <div class="big"></div>
-          </div>
-        </div>
-
-      </div><!-- /tool-layer -->
-    </div><!-- /canvas-wrap -->
-  </div><!-- /canvas-flex-zone -->
-
-  <div class="legend-row">
-    <div class="legend-left-group">
-      <div class="legend-item"><span class="legend-color given"></span><span>Line AB</span></div>
-      <div class="legend-item"><span class="legend-color user"></span><span>Your line</span></div>
-    </div>
-    <div class="legend-status" id="legendStatus"></div>
-  </div>
-
-</section>
-```
-
+    </section>
   </div><!-- /middle-flex -->
 
-  <!-- Bottom controls -->
-
+  <!-- THUMB CONTROL BAR -->
   <div class="bottom-bar">
     <div class="controls-row">
       <button id="btnCheckNext" class="big-btn primary" disabled>Check</button>
@@ -780,14 +803,14 @@
 
 </main>
 
-<!-- Pop-up panel after finishing Section B (score + feedback preview) -->
-
+<!-- Mini summary panel after Section B complete -->
 <div id="miniPanel" role="status" aria-live="polite">
   <strong>Score saved.</strong>
   <div id="miniScoreText">Score: —</div>
   <div id="miniFeedbackText">Feedback: —</div>
   <div class="teacher-note">
-    Go back to SLS and tap Submit.<br/>(Teacher: this is what will be sent.)
+    Go back to SLS and tap Submit.
+    (Teacher: this is what will be sent.)
   </div>
 </div>
 
@@ -795,9 +818,8 @@
 
 <script>
 /* ============================================================
-   CONSTANTS / STATE
+   CONSTANTS / STATE (unchanged logic)
    ============================================================ */
-
 const PAYLOAD_KEY = "p3_parallel_perpendicular_payload_v1";
 
 const COLS=18, ROWS=10, MARGIN=30;
@@ -866,7 +888,7 @@ let btnSquare, btnRuler, btnResetTools;
 window.__IN_SLS__ = false;
 
 /* ============================================================
-   UTILS
+   UTILS (unchanged)
    ============================================================ */
 function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
 function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
@@ -930,7 +952,7 @@ function angleDiffDeg(a,b){
 }
 
 /* ============================================================
-   BOARD GENERATION
+   BOARD GENERATION (unchanged)
    ============================================================ */
 function genBoard(mode){
   const MAX=800;
@@ -976,7 +998,7 @@ function genBoard(mode){
 }
 
 /* ============================================================
-   CANVAS / DRAW
+   CANVAS / DRAW  (unchanged math, responsive size)
    ============================================================ */
 function resizeCanvas(){
   const rect=canvasWrap.getBoundingClientRect();
@@ -1123,7 +1145,7 @@ function paint(){
 }
 
 /* ============================================================
-   QUESTION / HUD / FEEDBACK
+   QUESTION / HUD / FEEDBACK (unchanged logic)
    ============================================================ */
 function questionCount(){ return (section==='A') ? orderA.length : orderB.length; }
 function currentIndex(){ return (section==='A') ? qIndexA : qIndexB; }
@@ -1191,7 +1213,7 @@ function updateHUD(){
 }
 
 /* ============================================================
-   LOAD QUESTION
+   LOAD QUESTION (unchanged)
    ============================================================ */
 function loadQuestion(){
   rightAngleAt=null;
@@ -1215,7 +1237,7 @@ function loadQuestion(){
 }
 
 /* ============================================================
-   CHECK ANSWER + SCORING
+   CHECK ANSWER / SCORING (unchanged)
    ============================================================ */
 function isParallel(v1,v2){
   return (v1.dx*v2.dy - v1.dy*v2.dx) === 0;
@@ -1246,7 +1268,6 @@ function checkCurrentAnswer(){
     inter:(ok && modeNow==='perpC' && inter)?inter:null
   };
 }
-
 function markFirstAttemptIfNeeded(isCorrect){
   if(section!=='B') return;
   const i=qIndexB;
@@ -1258,25 +1279,21 @@ function markFirstAttemptIfNeeded(isCorrect){
 }
 
 /* ============================================================
-   SLS BRIDGE (aligned with fractions reference)
+   SLS BRIDGE (unchanged)
    ============================================================ */
-
 function pushToXAPI(score, feedback){
   try {
-    // 1. mirror into hidden inputs so updateStore()/storeState() can read
     const sInput = document.getElementById('score-input');
     const fInput = document.getElementById('feedback-input');
     if (sInput) sInput.value = String(score);
     if (fInput) fInput.value = feedback || '';
 
-    // 2. ask SLS to store it (teacher will Submit in SLS later)
     if (typeof updateStore === 'function') {
       updateStore();
     } else if (typeof storeState === 'function') {
       storeState({ score, feedback });
     }
 
-    // 3. update visual "Saved for SLS" badge (same semantics as fractions)
     const badge = document.getElementById('statusBadge');
     const txt   = document.getElementById('statusBadgeText');
     if (badge){
@@ -1284,14 +1301,15 @@ function pushToXAPI(score, feedback){
         ? feedback.slice(0,80)+'…'
         : (feedback||'');
       if(txt){
-        txt.textContent = `Saved for SLS · Score ${score}${shortFb ? ' · ' + shortFb : ''}`;
+        txt.textContent =
+          `Saved for SLS · Score ${score}${shortFb ? ' · ' + shortFb : ''}`;
       }else{
-        badge.textContent = `Saved for SLS · Score ${score}${shortFb ? ' · ' + shortFb : ''}`;
+        badge.textContent =
+          `Saved for SLS · Score ${score}${shortFb ? ' · ' + shortFb : ''}`;
       }
       badge.style.display='block';
     }
 
-    // also update miniPanel live if it's visible
     if(miniPanel && miniPanel.style.display==="block"){
       miniScoreText.textContent="Score: "+score+" / 10";
       miniFeedbackText.textContent="Feedback: "+feedback;
@@ -1321,19 +1339,17 @@ function syncFromLocalStorageToXAPI(){
 }
 
 /* ============================================================
-   FINALISE SCORE (called when Section B all attempted)
+   FINALISE SCORE (unchanged)
    ============================================================ */
 function finalizeAndSaveIfNeeded(){
   if(finalSavedOnce || !allAttemptedB()) return;
 
-  const finalScore   = totalScoreB();                // 0–10
-  const finalFeedback= buildFinalFeedbackString();   // summary like fractions buildFeedback()
+  const finalScore   = totalScoreB();
+  const finalFeedback= buildFinalFeedbackString();
 
-  // Persist & push to SLS
   writePayload(finalScore, finalFeedback);
   pushToXAPI(finalScore, finalFeedback);
 
-  // learner-facing mini panel ("Score saved. Go back to SLS...")
   miniScoreText.textContent   = "Score: "+finalScore+" / 10";
   miniFeedbackText.textContent= "Feedback: "+finalFeedback;
   miniPanel.style.display     = "block";
@@ -1342,7 +1358,7 @@ function finalizeAndSaveIfNeeded(){
 }
 
 /* ============================================================
-   BUTTON: CHECK / NEXT
+   CHECK/NEXT BUTTON (unchanged)
    ============================================================ */
 function doCheckOrNext(){
   if(btnCheckNext.dataset.mode==="next" || checked){
@@ -1401,7 +1417,7 @@ function doCheckOrNext(){
 }
 
 /* ============================================================
-   STUDENT DRAW EVENTS
+   DRAW EVENTS (unchanged behaviour)
    ============================================================ */
 function getCanvasXY(evt){
   let clientX, clientY;
@@ -1521,7 +1537,7 @@ function clearLine(){
 }
 
 /* ============================================================
-   TOOL SYSTEM (1 finger move / ⤢ scale / ↻ rotate / pinch-rotate)
+   TOOLS (unchanged logic, same gestures)
    ============================================================ */
 function toggleTool(toolEl){
   if(toolEl.classList.contains('hidden')){
@@ -1538,7 +1554,6 @@ function toggleTool(toolEl){
     }
   }
 }
-
 function isEventOnTool(evt){
   if(evt.touches && evt.touches.length>0){
     for(const t of evt.touches){
@@ -1711,8 +1726,8 @@ function doToolDrag(evt){
     const currAngle = Math.atan2(curr.y - centerCache.y, curr.x - centerCache.x)*(180/Math.PI);
     const dAngStep = angleDiffDeg(currAngle, startState.prevAngle);
     let newRot = parseFloat(activeTool.dataset.rot||startState.rot);
-    newRot += dAngStep*0.5; // damp twist
-    newRot = Math.round(newRot*2)/2; // snap
+    newRot += dAngStep*0.5;
+    newRot = Math.round(newRot*2)/2;
     activeTool.dataset.rot = String(newRot);
     startState.prevAngle = currAngle;
 
@@ -1752,7 +1767,7 @@ function updateToolTransform(el){
 }
 
 /* ============================================================
-   MULTI-TOUCH GESTURE (2 fingers: pinch to size, twist to rotate)
+   PINCH / TWIST GESTURE (unchanged)
    ============================================================ */
 function getTouchesForTool(evt, tool){
   const list=[];
@@ -1848,7 +1863,7 @@ function endGestureCompletely(){
 }
 
 /* ============================================================
-   TOOL RESET
+   TOOL RESET (unchanged)
    ============================================================ */
 function resetToolsPosition(){
   if(toolSetSquare){
@@ -1870,10 +1885,9 @@ function resetToolsPosition(){
 }
 
 /* ============================================================
-   SESSION RESET HOOK (called by NewSessionClearKit via hidden btn)
+   SESSION RESET HOOK (unchanged)
    ============================================================ */
 function resetInternalSessionDataToFresh(){
-  // overwrite local payload with 0 and empty feedback and push that
   writePayload(0,"");
   pushToXAPI(0,"");
 
@@ -1890,7 +1904,7 @@ function resetInternalSessionDataToFresh(){
 }
 
 /* ============================================================
-   EVENT WIRING
+   EVENT WIRING (unchanged)
    ============================================================ */
 function handlePointerDown(e){
   tryBeginGesture(e);
@@ -2003,9 +2017,7 @@ function debounce(fn,ms){
   };
 }
 
-/* ============================================================
-   HOOK UP teacher debug buttons like fractions
-   ============================================================ */
+/* teacher debug buttons */
 function hookTeacherButtons(){
   const saveStoreBtn = document.getElementById('save-store');
   if(saveStoreBtn){
@@ -2029,8 +2041,6 @@ function hookTeacherButtons(){
     });
   }
 
-  // hidden newSessionBtn is clicked automatically by ClearKit when it's a new attempt,
-  // but we still define listener so manual click behaves the same.
   const newSessionBtn=document.getElementById('newSessionBtn');
   if(newSessionBtn){
     newSessionBtn.addEventListener('click', ()=>{
@@ -2042,9 +2052,7 @@ function hookTeacherButtons(){
   }
 }
 
-/* ============================================================
-   INIT + SYNC (same pattern as fractions)
-   ============================================================ */
+/* INIT + SYNC */
 function initAll(){
   initDOMRefs();
   attachCanvasEvents();
@@ -2065,19 +2073,15 @@ function initAll(){
   loadQuestion();
 }
 
-/* hide script errors from pupils, but still detect if SLS is present */
+/* detect SLS environment silently */
 window.addEventListener('error',()=>{
   if(typeof updateStore==="function" || typeof storeState==="function"){
     window.__IN_SLS__=true;
   }
 });
 
-/* ============================================================
-   LIFECYCLE / SYNC WITH SLS (mirrors fractions syncFromLocalToXAPI)
-   ============================================================ */
+/* LIFECYCLE / SLS SYNC */
 window.addEventListener('load', ()=>{
-  // Initialise ClearKit the same way fractions does.
-  // We also give onNewSession so that a brand new SLS attempt resets arrays etc.
   NewSessionClearKit.init({
     activityId: window.ACTIVITY_ID,
     clickButtonId: 'newSessionBtn',
@@ -2087,10 +2091,8 @@ window.addEventListener('load', ()=>{
     }
   });
 
-  // After init, sync any stored score/feedback to SLS badge + hidden inputs
   syncFromLocalStorageToXAPI();
 });
-
 window.addEventListener('visibilitychange', ()=>{
   if(!document.hidden) syncFromLocalStorageToXAPI();
 });
