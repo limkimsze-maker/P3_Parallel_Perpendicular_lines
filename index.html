@@ -15,6 +15,7 @@
 <script src="index.js" defer></script>
 
 <script>
+/* NewSessionClearKit (same as before) */
 (function (global){
   const Kit = {
     init(opts = {}) {
@@ -290,11 +291,13 @@ header.app-header small{
   display:flex;
   flex-direction:column;
   overflow:hidden;
+  background:#fff;
   border:2px solid var(--card-border);
   border-radius:12px;
-  background:#fff;
   box-shadow:0 2px 6px rgb(0 0 0 / .05);
 }
+
+/* board-card holds: canvas, buttons grid, legend */
 .board-card{
   flex:1 1 auto;
   min-height:0;
@@ -303,6 +306,8 @@ header.app-header small{
   overflow:hidden;
   border-radius:12px;
 }
+
+/* make canvas zone take more vertical space */
 .canvas-flex-zone{
   flex:1 1 auto;
   min-height:0;
@@ -399,6 +404,7 @@ canvas{
   pointer-events:auto;
 }
 
+/* set square look */
 .tool.setsquare{
   width:110px;
   height:110px;
@@ -421,6 +427,7 @@ canvas{
   border-radius:0;
 }
 
+/* ruler look (still in DOM for logic, no button shown but can still be toggled in code if needed) */
 .tool.ruler{
   width:220px;
   height:42px;
@@ -445,6 +452,51 @@ canvas{
 .ruler-marks div.big   { height:24px; }
 .ruler-marks div.small { height:14px; }
 
+/*** BUTTON GRID (2x2) ***/
+.control-grid-container{
+  flex-shrink:0;
+  padding:8px 8px 4px;
+  background:#fff;
+  border-top:1px solid var(--card-border);
+}
+
+.control-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  grid-template-rows:1fr 1fr;
+  gap:8px;
+  width:100%;
+  max-width:360px;
+  margin:0 auto;
+}
+
+/* square buttons */
+.big-btn{
+  position:relative;
+  width:100%;
+  aspect-ratio:1/1;       /* perfect square */
+  border-radius:12px;
+  border:2px solid #d1d5db;
+  background:#fff;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.2;
+  color:#111827;
+  text-align:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 6px;
+  word-break:break-word;
+}
+.big-btn.primary{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+.big-btn[disabled]{opacity:.4;}
+
+/*** LEGEND UNDER BUTTONS ***/
 .legend-row{
   flex-shrink:0;
   display:flex;
@@ -452,7 +504,7 @@ canvas{
   align-items:flex-start;
   justify-content:space-between;
   gap:8px;
-  padding:6px 8px 8px;
+  padding:6px 8px 10px;
   font-size:11px;
   line-height:1.3;
   background:#fff;
@@ -488,44 +540,6 @@ canvas{
 }
 .legend-status.good{color:var(--good-text);}
 .legend-status.bad{ color:var(--bad-text);}
-
-/*** BOTTOM CONTROLS ***/
-.bottom-bar{
-  flex-shrink:0;
-  background:#fff;
-  border-top:2px solid var(--card-border);
-  border-radius:12px;
-  box-shadow:0 -4px 12px rgb(0 0 0 / .05);
-  padding:8px;
-}
-.controls-row{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:flex-start;
-  justify-content:center;
-  gap:6px 6px;
-  width:100%;
-}
-.big-btn{
-  flex:1 1 calc(50% - 6px);
-  min-width:90px;
-  min-height:32px;          /* smaller */
-  padding:4px 6px;          /* smaller */
-  border-radius:10px;
-  border:2px solid #d1d5db;
-  background:#fff;
-  font-size:10px;           /* smaller */
-  font-weight:700;
-  line-height:1.2;
-  color:#111827;
-  text-align:center;
-}
-.big-btn.primary{
-  background:var(--accent);
-  border-color:var(--accent);
-  color:#fff;
-}
-.big-btn[disabled]{opacity:.4;}
 
 /*** MINI PANEL + CREDIT ***/
 #miniPanel{
@@ -666,6 +680,7 @@ canvas{
   <div class="middle-flex">
     <section class="board-card" aria-label="drawing area">
 
+      <!-- CANVAS -->
       <div class="canvas-flex-zone">
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="grid" width="1000" height="560"></canvas>
@@ -702,7 +717,7 @@ canvas{
               </div>
             </div>
 
-            <!-- Ruler Tool (still exists for the canvas logic, but we don't expose a button anymore) -->
+            <!-- Ruler Tool (hidden unless code shows it) -->
             <div
               class="tool ruler hidden"
               id="toolRuler"
@@ -748,6 +763,17 @@ canvas{
         </div><!-- /canvas-wrap -->
       </div><!-- /canvas-flex-zone -->
 
+      <!-- BUTTON GRID (2x2 square buttons under the canvas) -->
+      <div class="control-grid-container">
+        <div class="control-grid">
+          <button id="btnCheckNext" class="big-btn primary" disabled>Check</button>
+          <button id="btnClear" class="big-btn">Clear Line</button>
+          <button id="btnSquare" class="big-btn">Set Square</button>
+          <button id="btnResetTools" class="big-btn">Reset Tools</button>
+        </div>
+      </div>
+
+      <!-- LEGEND -->
       <div class="legend-row">
         <div class="legend-left-group">
           <div class="legend-item">
@@ -761,19 +787,6 @@ canvas{
       </div>
 
     </section>
-  </div>
-
-  <!-- Updated controls row:
-       - No "Ruler" button.
-       - "Reset Tools" now visible in its place.
-       - Buttons smaller via .big-btn changes above. -->
-  <div class="bottom-bar">
-    <div class="controls-row">
-      <button id="btnCheckNext" class="big-btn primary" disabled>Check</button>
-      <button id="btnClear" class="big-btn">Clear Line</button>
-      <button id="btnSquare" class="big-btn">Set Square</button>
-      <button id="btnResetTools" class="big-btn">Reset Tools</button>
-    </div>
   </div>
 
 </main>
@@ -792,7 +805,7 @@ canvas{
 
 <script>
 /* ============================================================
-   CONSTANTS / STATE
+   CONSTANTS / STATE (unchanged logic)
    ============================================================ */
 const PAYLOAD_KEY = "p3_parallel_perpendicular_payload_v1";
 
@@ -860,7 +873,9 @@ let miniPanel, miniScoreText, miniFeedbackText;
 let btnSquare, btnResetTools;
 window.__IN_SLS__ = false;
 
-/* utils */
+/* ============================================================
+   UTILS
+   ============================================================ */
 function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
 function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){const t=a%b;a=b;b=t}return a||1;}
@@ -922,7 +937,9 @@ function angleDiffDeg(a,b){
   return d;
 }
 
-/* board gen */
+/* ============================================================
+   BOARD GENERATION
+   ============================================================ */
 function genBoard(mode){
   const MAX=800;
   let A_,B_,C_;
@@ -959,13 +976,16 @@ function genBoard(mode){
       break outer;
     }
   }
+
   if(!A_){
     A_={x:7,y:4}; B_={x:12,y:7}; C_={x:9,y:5};
   }
   return {A:A_,B:B_,C:C_};
 }
 
-/* canvas / draw */
+/* ============================================================
+   CANVAS / DRAW
+   ============================================================ */
 function resizeCanvas(){
   const rect=canvasWrap.getBoundingClientRect();
   const ratio = Math.max(1, Math.min(3, Math.round((window.devicePixelRatio||1))));
@@ -1029,30 +1049,42 @@ function drawGrid(){
   ctx.lineWidth=2; ctx.strokeStyle='#e5e7eb';
   ctx.strokeRect(marginX,marginY,COLS*cellS,ROWS*cellS);
 }
+
+/* BIGGER POINT LABELS A/B/C + bigger dots */
 function drawPoint(P,label){
   const p=toCanvasCoord(P);
+
+  // make the point dot a bit bigger
   ctx.fillStyle='#111827';
   ctx.beginPath();
-  ctx.arc(p.x,p.y,Math.max(3,cellS*0.05),0,Math.PI*2);
+  ctx.arc(p.x,p.y,Math.max(4.5,cellS*0.08),0,Math.PI*2);
   ctx.fill();
-  ctx.font=Math.max(12,Math.floor(cellS*0.22))+'px Arial';
-  ctx.textAlign='center'; ctx.textBaseline='bottom';
-  const dx=(label==='A'||label==='B')?Math.max(10,cellS*0.15):0;
-  ctx.fillText(label,p.x+dx,p.y-8);
+
+  // make the label bigger and bolder-looking
+  ctx.font = 'bold ' + Math.max(16,Math.floor(cellS*0.32))+'px Arial';
+  ctx.fillStyle='#111827';
+  ctx.textAlign='center';
+  ctx.textBaseline='bottom';
+
+  // offset label a little more so it doesn't sit on top of the point
+  const dx=(label==='A'||label==='B')?Math.max(12,cellS*0.18):0;
+  ctx.fillText(label,p.x+dx,p.y-10);
 }
+
 function drawAB(){
   ctx.lineWidth=Math.max(2,cellS*0.06); ctx.strokeStyle='#64748b';
   const a=toCanvasCoord(A_pt), b=toCanvasCoord(B_pt);
   ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
   drawPoint(A_pt,'A'); drawPoint(B_pt,'B'); drawPoint(C_pt,'C');
 }
+
 function drawRightAngleMark(P){
   const aa=toCanvasCoord(A_pt), bb=toCanvasCoord(B_pt);
   const ux2=bb.x-aa.x, uy2=bb.y-aa.y;
   const len=Math.hypot(ux2,uy2)||1;
   const U={x:ux2/len,y:uy2/len};
   const V={x:-U.y,y:U.x};
-  const s=Math.max(6,cellS*0.25);
+  const s=Math.max(8,cellS*0.3); /* slightly larger mark */
   const p0={x:P.x,y:P.y};
   const p1={x:P.x+U.x*s,y:P.y+U.y*s};
   const p2={x:p1.x+V.x*s,y:p1.y+V.y*s};
@@ -1068,6 +1100,7 @@ function drawRightAngleMark(P){
   ctx.fill();
   ctx.restore();
 }
+
 function drawUserStuff(){
   if(dragging && tempStart && previewEnd){
     ctx.save();
@@ -1089,14 +1122,14 @@ function drawUserStuff(){
     ctx.save();
     ctx.strokeStyle='#ef4444';
     ctx.lineWidth=Math.max(2,cellS*0.05);
-    const L=Math.max(12,cellS*0.35);
+    const L=Math.max(14,cellS*0.4);
     ctx.beginPath();
     ctx.moveTo(p.x-L,p.y); ctx.lineTo(p.x+L,p.y);
     ctx.moveTo(p.x,p.y-L); ctx.lineTo(p.x,p.y+L);
     ctx.stroke();
     ctx.beginPath();
     ctx.fillStyle='#ef4444';
-    ctx.arc(p.x,p.y,Math.max(2.5,cellS*0.04),0,Math.PI*2);
+    ctx.arc(p.x,p.y,Math.max(3,cellS*0.05),0,Math.PI*2);
     ctx.fill();
     ctx.restore();
   }
@@ -1110,7 +1143,9 @@ function paint(){
   drawUserStuff();
 }
 
-/* HUD / scoring */
+/* ============================================================
+   QUESTION / HUD / FEEDBACK
+   ============================================================ */
 function questionCount(){ return (section==='A') ? orderA.length : orderB.length; }
 function currentIndex(){ return (section==='A') ? qIndexA : qIndexB; }
 function currentMode(){ return (section==='A') ? orderA[qIndexA] : orderB[qIndexB]; }
@@ -1139,7 +1174,7 @@ function buildFinalFeedbackString(){
   for(let i=0;i<firstAttemptLogB.length;i++){
     const mode = (orderB[i]==='paraC' ? 'para' : 'perp');
     parts.push("Q"+(i+1)+"("+mode+"):"+firstAttemptLogB[i]);
-  }
+    }
   return "Parallel/Perpendicular first-try score "+scoreNow+"/10 | "+parts.join(", ")+ " | "+buildNeedsHelp();
 }
 
@@ -1176,7 +1211,9 @@ function updateHUD(){
   }
 }
 
-/* questions */
+/* ============================================================
+   LOAD QUESTION
+   ============================================================ */
 function loadQuestion(){
   rightAngleAt=null;
   userLine=null;
@@ -1198,7 +1235,9 @@ function loadQuestion(){
   paint();
 }
 
-/* check / scoring */
+/* ============================================================
+   CHECK ANSWER + SCORING
+   ============================================================ */
 function isParallel(v1,v2){
   return (v1.dx*v2.dy - v1.dy*v2.dx) === 0;
 }
@@ -1228,6 +1267,7 @@ function checkCurrentAnswer(){
     inter:(ok && modeNow==='perpC' && inter)?inter:null
   };
 }
+
 function markFirstAttemptIfNeeded(isCorrect){
   if(section!=='B') return;
   const i=qIndexB;
@@ -1238,7 +1278,9 @@ function markFirstAttemptIfNeeded(isCorrect){
   }
 }
 
-/* SLS bridge */
+/* ============================================================
+   SLS BRIDGE
+   ============================================================ */
 function pushToXAPI(score, feedback){
   try {
     const sInput = document.getElementById('score-input');
@@ -1295,7 +1337,9 @@ function syncFromLocalStorageToXAPI(){
   pushToXAPI(saved.score, saved.feedback);
 }
 
-/* final save */
+/* ============================================================
+   FINALISE SCORE
+   ============================================================ */
 function finalizeAndSaveIfNeeded(){
   if(finalSavedOnce || !allAttemptedB()) return;
 
@@ -1312,7 +1356,9 @@ function finalizeAndSaveIfNeeded(){
   finalSavedOnce=true;
 }
 
-/* Check / Next logic */
+/* ============================================================
+   BUTTON: CHECK / NEXT
+   ============================================================ */
 function doCheckOrNext(){
   if(btnCheckNext.dataset.mode==="next" || checked){
     if(section==='A'){
@@ -1369,7 +1415,9 @@ function doCheckOrNext(){
   }
 }
 
-/* drawing / touch */
+/* ============================================================
+   STUDENT DRAW EVENTS
+   ============================================================ */
 function getCanvasXY(evt){
   let clientX, clientY;
   if(evt.touches && evt.touches.length){
@@ -1390,6 +1438,7 @@ function getCanvasXY(evt){
     y:(clientY-rect.top )*scaleY
   };
 }
+
 function startDraw(evt){
   if(checked && btnCheckNext.dataset.mode==="next") return;
   if(isEventOnTool(evt)) return;
@@ -1486,7 +1535,9 @@ function clearLine(){
   paint();
 }
 
-/* tool logic */
+/* ============================================================
+   TOOL SYSTEM
+   ============================================================ */
 function toggleTool(toolEl){
   if(toolEl.classList.contains('hidden')){
     toolEl.classList.remove('hidden');
@@ -1502,6 +1553,7 @@ function toggleTool(toolEl){
     }
   }
 }
+
 function isEventOnTool(evt){
   if(evt.touches && evt.touches.length>0){
     for(const t of evt.touches){
@@ -1535,6 +1587,7 @@ function pointerClientXY(evt){
     return {x:evt.clientX,y:evt.clientY};
   }
 }
+
 function getRotatedScaledExtents(w,h,rotDeg,scale){
   const th = rotDeg * Math.PI/180;
   const cos = Math.cos(th)*scale;
@@ -1553,7 +1606,8 @@ function getRotatedScaledExtents(w,h,rotDeg,scale){
   }
   return {minX,maxX,minY,maxY,width:maxX-minX,height:maxY-minY};
 }
-/* clamp tool stay mostly around canvas */
+
+/* allow ~2/3 out of canvas bounds */
 function clampToolToCanvas(toolEl){
   if(!toolEl || toolEl.classList.contains('hidden')) return;
   const wrapW = canvasWrap.clientWidth;
@@ -1606,6 +1660,7 @@ function clampToolToCanvas(toolEl){
   toolEl.dataset.x = String(x);
   toolEl.dataset.y = String(y);
 }
+
 function beginToolDrag(evt){
   if(evt.touches && evt.touches.length>1){
     tryBeginGesture(evt);
@@ -1651,6 +1706,7 @@ function beginToolDrag(evt){
   startState.startAngle = Math.atan2(startPointer.y - centerCache.y, startPointer.x - centerCache.x)*(180/Math.PI);
   startState.prevAngle  = startState.startAngle;
 }
+
 function doToolDrag(evt){
   if(!activeTool) return;
   const curr = pointerClientXY(evt);
@@ -1689,6 +1745,7 @@ function doToolDrag(evt){
     updateToolTransform(activeTool);
   }
 }
+
 function finishToolDrag(){
   if(activeTool){
     activeTool.classList.remove('dragging');
@@ -1696,6 +1753,7 @@ function finishToolDrag(){
   activeTool=null;
   dragMode=null;
 }
+
 function updateToolTransform(el){
   if(!el) return;
   const x=parseFloat(el.dataset.x||"0");
@@ -1708,7 +1766,9 @@ function updateToolTransform(el){
   el.style.transform=`translate(${x}px, ${y}px) rotate(${r}deg) scale(${sc})`;
 }
 
-/* gesture pinch/rotate */
+/* ============================================================
+   MULTI-TOUCH GESTURE (pinch / rotate)
+   ============================================================ */
 function getTouchesForTool(evt, tool){
   const list=[];
   if(!evt.touches) return list;
@@ -1721,6 +1781,7 @@ function getTouchesForTool(evt, tool){
   }
   return list;
 }
+
 function tryBeginGesture(evt){
   if(gestureInfo.isGesture) return;
   if(!evt.touches || evt.touches.length<2) return;
@@ -1755,6 +1816,7 @@ function tryBeginGesture(evt){
     }
   }
 }
+
 function doGestureUpdate(evt){
   if(!gestureInfo.isGesture || !gestureInfo.activeTool) return;
   const tool=gestureInfo.activeTool;
@@ -1784,6 +1846,7 @@ function doGestureUpdate(evt){
   clampToolToCanvas(tool);
   updateToolTransform(tool);
 }
+
 function endGestureIfDone(evt){
   if(!gestureInfo.isGesture) return;
   if(!evt.touches || evt.touches.length<2){
@@ -1799,7 +1862,9 @@ function endGestureCompletely(){
   dragMode=null;
 }
 
-/* reset */
+/* ============================================================
+   RESET TOOLS
+   ============================================================ */
 function resetToolsPosition(){
   if(toolSetSquare){
     toolSetSquare.dataset.x="20";
@@ -1819,7 +1884,9 @@ function resetToolsPosition(){
   }
 }
 
-/* session reset */
+/* ============================================================
+   SESSION RESET HOOK
+   ============================================================ */
 function resetInternalSessionDataToFresh(){
   writePayload(0,"");
   pushToXAPI(0,"");
@@ -1836,7 +1903,9 @@ function resetInternalSessionDataToFresh(){
   section='A';
 }
 
-/* event wiring */
+/* ============================================================
+   EVENT WIRING
+   ============================================================ */
 function handlePointerDown(e){
   tryBeginGesture(e);
   if(gestureInfo.isGesture){
@@ -1862,6 +1931,7 @@ function handlePointerUp(e){
 function handlePointerLeave(e){
   leaveDraw(e);
 }
+
 function attachCanvasEvents(){
   canvasWrap.addEventListener('mousedown',handlePointerDown,false);
   canvasWrap.addEventListener('mousemove',handlePointerMove,false);
@@ -1883,6 +1953,7 @@ function attachCanvasEvents(){
     paint();
   },{passive:false});
 }
+
 function attachControlEvents(){
   btnClear.addEventListener('click', clearLine);
   btnCheckNext.addEventListener('click', doCheckOrNext);
@@ -1905,7 +1976,9 @@ function attachControlEvents(){
   btnResetTools.addEventListener('click', resetToolsPosition);
 }
 
-/* refs/init */
+/* ============================================================
+   INIT REFS + HELPERS
+   ============================================================ */
 function initDOMRefs(){
   canvas=document.getElementById('grid');
   ctx=canvas.getContext('2d');
@@ -1979,7 +2052,9 @@ function hookTeacherButtons(){
   }
 }
 
-/* init */
+/* ============================================================
+   INIT ALL
+   ============================================================ */
 function initAll(){
   initDOMRefs();
   attachCanvasEvents();
@@ -2000,7 +2075,7 @@ function initAll(){
   loadQuestion();
 }
 
-/* in-SLS detect */
+/* detect SLS */
 window.addEventListener('error',()=>{
   if(typeof updateStore==="function" || typeof storeState==="function"){
     window.__IN_SLS__=true;
