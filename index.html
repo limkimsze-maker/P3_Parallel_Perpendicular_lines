@@ -1,3 +1,16 @@
+Totally. Right now the canvas card (`.board-card`) is capped with `min-height:50vh; max-height:70vh;`, and the outer layout (`.app`, `.middle-flex`) doesn't force the drawing area to grab leftover space. On a tall phone, that means you get empty space below instead of a larger grid.
+
+I’ll do three things:
+
+1. Let the main app fill the full screen (`min-height:100vh`) and flex vertically.
+2. Let the middle section (which holds the canvas) expand (`flex:1`).
+3. Let the board-card (the canvas card) stretch to take as much as it can (`flex:1; min-height:65vh; height:100%; max-height:none;`).
+
+That will push the canvas to dominate the screen and leave the feedback/buttons after it.
+
+Here’s the updated full HTML with those layout changes. The JavaScript is unchanged from the last version except for indentation differences — logic for parallel/perpendicular etc. is intact.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -146,10 +159,13 @@ pre{
   box-shadow:0 12px 24px rgb(0 0 0 / 0.08);
   margin:12px;
   padding:12px;
+
+  /* NEW: make the whole card stretch to fill viewport height */
+  min-height:calc(100vh - 24px);
   display:flex;
   flex-direction:column;
-  gap:12px;
   overflow:visible;
+  gap:12px;
 }
 
 /* Header / section tabs / status row */
@@ -267,11 +283,16 @@ header.app-header small{
   overflow:hidden;
 }
 
-/* Middle flex: canvas card + legend + footer-panel (buttons+feedback) */
+/* Middle flex: canvas card + legend + footer-panel */
 .middle-flex{
+  /* NEW: let this region eat the remaining vertical space */
+  flex:1 1 auto;
+  min-height:0;
+
   display:flex;
   flex-direction:column;
   gap:12px;
+  overflow:hidden;
 }
 
 /* board-card holds the canvas area */
@@ -281,14 +302,18 @@ header.app-header small{
   border-radius:12px;
   box-shadow:0 2px 6px rgb(0 0 0 /.05);
 
+  /* NEW: board-card itself now flexes and stretches */
+  flex:1 1 auto;
+  min-height:65vh;   /* was 50vh, now bigger by default */
+  height:100%;
+  max-height:none;
+
   display:flex;
   flex-direction:column;
-  min-height:50vh;          /* make sure canvas shows big */
-  max-height:70vh;
   overflow:hidden;
 }
 
-/* canvas section takes most of board-card */
+/* canvas area inside board-card should expand fully */
 .canvas-flex-zone{
   flex:1 1 auto;
   min-height:0;
@@ -297,7 +322,7 @@ header.app-header small{
   display:flex;
 }
 
-/* canvas wrapper */
+/* canvas wrapper stretches to fill available card space */
 .canvas-wrap{
   position:relative;
   border-radius:8px;
@@ -406,7 +431,7 @@ canvas{
   border-radius:0;
 }
 
-/* optional ruler tool (still exists in code) */
+/* ruler tool in code, can still be toggled in JS */
 .tool.ruler{
   width:220px;
   height:42px;
@@ -431,7 +456,7 @@ canvas{
 .ruler-marks div.big{height:24px;}
 .ruler-marks div.small{height:14px;}
 
-/* Legend below canvas */
+/* Legend row at bottom of board-card */
 .legend-row{
   flex-shrink:0;
   display:flex;
@@ -459,7 +484,7 @@ canvas{
 .legend-color.given{background:#64748b;}
 .legend-color.user{background:#0ea5e9;}
 
-/* ===== Footer-panel under the canvas IN FLOW (not fixed, not covering) ===== */
+/* Footer-panel is BELOW the canvas card. Still centered. */
 .footer-panel{
   flex-shrink:0;
   display:flex;
@@ -470,7 +495,7 @@ canvas{
   padding:0 8px 8px;
 }
 
-/* feedback bubble (legendStatus moved here visually) */
+/* feedback bubble */
 .feedback-bubble{
   max-width:90%;
   background:#fff;
@@ -488,7 +513,7 @@ canvas{
 .feedback-bubble.good{ color:var(--good-text); }
 .feedback-bubble.bad{  color:var(--bad-text);  }
 
-/* control grid: 2 x 2 buttons centered */
+/* 2x2 grid of buttons */
 .control-grid{
   display:inline-grid;
   grid-template-columns:auto auto;
@@ -501,7 +526,6 @@ canvas{
   padding:12px 16px;
 }
 
-/* buttons */
 .big-btn{
   border-radius:12px;
   border:2px solid #d1d5db;
@@ -525,7 +549,7 @@ canvas{
 }
 .big-btn[disabled]{opacity:.4;}
 
-/* miniPanel for final save */
+/* miniPanel (final score popup after Section B complete) */
 #miniPanel{
   display:none;
   max-width:260px;
@@ -537,6 +561,7 @@ canvas{
   font-size:14px;
   font-weight:600;
   color:#1f2937;
+  text-align:center;
 }
 #miniPanel strong{
   display:block;
@@ -666,7 +691,7 @@ canvas{
               </div>
             </div>
 
-            <!-- Ruler Tool (still available in code if needed) -->
+            <!-- Ruler Tool (hidden by default but logic kept) -->
             <div class="tool ruler hidden" id="toolRuler"
                  data-x="60" data-y="60" data-rot="0" data-scale="1">
               <div class="move-area" data-toolmove="1"></div>
@@ -690,7 +715,7 @@ canvas{
                 <div class="small"></div>
                 <div class="big"></div>
                 <div class="small"></div>
-                <div class="small"></div>
+                <div the="small"></div>
                 <div class="small"></div>
                 <div class="big"></div>
               </div>
@@ -708,7 +733,7 @@ canvas{
 
     </section>
 
-    <!-- FEEDBACK + BUTTONS now live here below the canvas (not covering it) -->
+    <!-- FEEDBACK + BUTTONS -->
     <div class="footer-panel" aria-live="polite">
       <div id="legendStatus" class="feedback-bubble"></div>
 
@@ -719,7 +744,7 @@ canvas{
         <button id="btnResetTools" class="big-btn">Reset Tools</button>
       </div>
 
-      <!-- score summary panel (only shown at end of test in JS) -->
+      <!-- score summary panel (only at end of Section B) -->
       <div id="miniPanel" role="status" aria-live="polite">
         <strong>Score saved.</strong>
         <div id="miniScoreText">Score: —</div>
@@ -2044,3 +2069,13 @@ document.addEventListener('DOMContentLoaded', initAll, {once:true});
 
 </body>
 </html>
+```
+
+What changed to “flex it” so the canvas uses the wasted phone space:
+
+* `.app` now has `min-height:calc(100vh - 24px); display:flex; flex-direction:column;`
+* `.middle-flex` now `flex:1 1 auto; min-height:0;` so it can grow and scroll inside the app.
+* `.board-card` (the white canvas card) is now `flex:1 1 auto; min-height:65vh; height:100%; max-height:none;` instead of being capped at ~70vh.
+* `.canvas-flex-zone` and `.canvas-wrap` already stretch to fill `board-card`, and `resizeCanvas()` uses the actual pixel size of `.canvas-wrap`, so the drawing grid will render larger.
+
+Now on a phone, almost all the unused middle vertical space is handed to the canvas 💪. The feedback bubble + 2×2 buttons still sit under it, centered, and the canvas stays visible and interactable.
